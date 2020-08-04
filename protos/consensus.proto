@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "consensus";
+option go_package = "consensus";
+
+
+enum MessageType {
+    Default = 0;
+    PrePrepare = 1;  // 预准备
+    Prepare = 2; // 准备
+    Commit = 3; 
+    Checkpoint = 4;   
+    ViewChange = 5;
+    NewBlockProposal = 6;
+}
+
+
+// 状态机流转列表
+enum States {
+    NotStartd = 0;
+    PrePreparing = 1;
+    Preparing = 2;
+    Checking = 3;
+    Committing = 4;
+    Finished = 5;
+    ViewChanging = 6;
+    Checkpointing = 7;
+}
+
+message PbftBlock {
+    // 区块链的hash值 
+    bytes block_id = 1;
+    // 签名者公钥
+    bytes signer_id = 2;
+
+    uint64 block_num = 3;
+    // 区块完整内容
+    bytes content = 4;
+    // 内容签名
+    bytes sign = 5;
+}
+
+message PbftMessageInfo {
+    // Type of the message
+    MessageType msg_type = 1;
+    // View number
+    uint64 view = 2;
+    // Sequence number
+    uint64 seq_num = 3;
+    // Node who signed the message
+    bytes signer_id = 4;
+    // 签名内容
+    bytes sign = 5;
+}
+
+// PbftGenericMessage A generic PBFT message (PrePrepare, Prepare, Commit, Checkpoint)
+message PbftGenericMessage {
+    // Message information
+    PbftMessageInfo info = 1;
+    // The actual message
+    PbftBlock block = 2;
+    // 收到的其他节点发送的消息
+    repeated PbftMessageInfo other_infos = 3;
+}
+
+// View change message, for when a node suspects the primary node is faulty
+message PbftViewChange {
+    // Message information
+    PbftMessageInfo info = 1;
+    // Set of `2f + 1` Checkpoint messages, proving correctness of stable
+    // Checkpoint mentioned in info's `seq_num`
+    repeated PbftGenericMessage checkpoint_messages = 2;
+}
+
+message PbftMessage {
+    oneof msg {
+         PbftGenericMessage generic = 1;
+         PbftViewChange view_change = 2;
+    }
+}
+
+message verifier {
+    bytes publick_key = 1;
+    bytes private_key = 2;
+    bytes seq_num = 3;
+}
+
+message genesis {
+    repeated verifier verifiers  = 1;
+}
