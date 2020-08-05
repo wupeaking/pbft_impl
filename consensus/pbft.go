@@ -9,6 +9,7 @@ import (
 	"github.com/wupeaking/pbft_impl/model"
 	"github.com/wupeaking/pbft_impl/network"
 	"github.com/wupeaking/pbft_impl/storage/world_state"
+	"github.com/wupeaking/pbft_impl/transaction"
 )
 
 type PBFT struct {
@@ -21,6 +22,7 @@ type PBFT struct {
 	logger      *log.Logger
 	ws          *world_state.WroldState
 	stateMigSig chan model.States // 状态迁移信号
+	txPool      *transaction.TxPool
 }
 
 type MsgQueue struct {
@@ -61,7 +63,7 @@ func (mq *MsgQueue) WaitMsg() <-chan struct{} {
 	return mq.comingFlag
 }
 
-func New(ws *world_state.WroldState) (*PBFT, error) {
+func New(ws *world_state.WroldState, txPool *transaction.TxPool) (*PBFT, error) {
 	pbft := &PBFT{}
 	pbft.Msgs = NewMsgQueue()
 	pbft.sm = NewStateMachine()
@@ -76,6 +78,7 @@ func New(ws *world_state.WroldState) (*PBFT, error) {
 		pbft.verifiers[string(v.PublickKey)] = v
 	}
 	pbft.stateMigSig = make(chan model.States, 1)
+	pbft.txPool = txPool
 
 	return pbft, nil
 }
