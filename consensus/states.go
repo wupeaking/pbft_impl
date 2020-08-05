@@ -60,7 +60,7 @@ func NewStateMachine() *StateMachine {
 
 //Migrate  状态转移
 func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
-	if !pbft.isValidMsg(msg) {
+	if !pbft.VerfifyMsg(msg) {
 		pbft.logger.Warnf("接收到无效的msg")
 		return
 	}
