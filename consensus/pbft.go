@@ -13,13 +13,14 @@ import (
 
 type PBFT struct {
 	// 当前所属状态
-	sm        *StateMachine
-	verifiers map[string]model.Verifier
-	Msgs      *MsgQueue
-	timer     *time.Timer
-	switcher  network.SwitcherI
-	logger    *log.Logger
-	ws        *world_state.WroldState
+	sm          *StateMachine
+	verifiers   map[string]model.Verifier
+	Msgs        *MsgQueue
+	timer       *time.Timer
+	switcher    network.SwitcherI
+	logger      *log.Logger
+	ws          *world_state.WroldState
+	stateMigSig chan model.States // 状态迁移信号
 }
 
 type MsgQueue struct {
@@ -74,6 +75,7 @@ func New(ws *world_state.WroldState) (*PBFT, error) {
 	for _, v := range ws.Verifiers {
 		pbft.verifiers[string(v.PublickKey)] = v
 	}
+	pbft.stateMigSig = make(chan model.States, 1)
 
 	return pbft, nil
 }
@@ -101,5 +103,14 @@ func (pbft *PBFT) Daemon() {
 		case <-pbft.timer.C:
 			// 有超时
 		}
+	}
+}
+
+func (pbft *PBFT) tiggerMigrate(s model.States) {
+	select {
+	case pbft.stateMigSig <- s:
+		return
+	default:
+		return
 	}
 }

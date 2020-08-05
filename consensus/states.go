@@ -60,7 +60,11 @@ func NewStateMachine() *StateMachine {
 
 //Migrate  状态转移
 func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
-	// todo:: 校验消息的合法性 是否为空值 如果不合法 直接返回
+	if !pbft.isValidMsg(msg) {
+		pbft.logger.Warnf("接收到无效的msg")
+		return
+	}
+
 	curState := pbft.sm.CurrentState()
 	switch curState {
 	case model.States_NotStartd:
@@ -151,7 +155,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		}
 		// 执行到此处 说明收到了正确的由主节点发送的pre-prepare消息
 		// 广播prepare消息 切换到preparing状态  重置超时 等待接收足够多的prepare消息
-		// 向所有验证者发起pre-prepare 消息
+		// 向所有验证者发起prepare 消息
 		newMsg := model.PbftGenericMessage{
 			Info: &model.PbftMessageInfo{MsgType: model.MessageType_Prepare,
 				View: pbft.ws.View, SeqNum: pbft.ws.BlockNum + 1,
@@ -244,6 +248,9 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 				pbft.sm.ChangeState(model.States_Checking)
 				// todo:: 如果本机已经保存了完整区块 广播区块
 				pbft.timer.Reset(10 * time.Second)
+				// 触发信号 迁移到checking状态
+				// 为啥需要手动触发 是由于 可能这个消息已经被收到了 到这一直不会收到消息转移到checking状态
+				pbft.tiggerMigrate(model.States_Checking)
 				return
 			}
 		}
@@ -261,5 +268,31 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		newMsg.OtherInfos = prepareMsgs
 		// 广播消息
 		pbft.switcher.Broadcast(model.NewPbftMessage(newMsg))
+
+	case model.States_Checking:
+		// 说明节点已经收到了足够多的prepare消息 等待收到 完整的区块包
+
 	}
+}
+
+func (pbft *PBFT) isValidMsg(msg *model.PbftMessage) bool {
+	if msg == nil {
+		return false
+	}
+	gm := msg.GetGeneric()
+	if gm != nil {
+		if gm.Info == nil {
+			return false
+		}
+		return true
+	}
+
+	vc := msg.GetViewChange()
+	if vc != nil {
+		if vc.Info == nil {
+			return false
+		}
+		return true
+	}
+	return false
 }
