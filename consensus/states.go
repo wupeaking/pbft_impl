@@ -94,11 +94,17 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 				Info: &model.PbftMessageInfo{MsgType: model.MessageType_PrePrepare,
 					View: pbft.ws.View, SeqNum: pbft.ws.BlockNum + 1,
 					SignerId: pbft.ws.CurVerfier.PublickKey,
-					Sign:     nil, // todo:: 需要签名
+					Sign:     nil,
 				},
 			}
+			// 签名
+			signedMsg, err := pbft.SignMsg(model.NewPbftMessage(newMsg))
+			if err != nil {
+				pbft.logger.Debugf("当前状态为 %s, 发起pre-prepare消息时 在签名过程中发生错误 err: %v ",
+					model.States_name[int32(curState)], err)
+			}
 			// 广播消息
-			pbft.switcher.Broadcast(model.NewPbftMessage(newMsg))
+			pbft.switcher.Broadcast(signedMsg)
 			// 启动超时定时器器
 			pbft.timer.Reset(10 * time.Second)
 			// 直接迁移到 prepare状态
@@ -150,9 +156,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 			pbft.logger.Warnf("当前节点处于PrePreparing 收到pre-prepare消息 计算的主节点的公钥不一致, 主节点标号为: %d",
 				primary)
 		}
-		// todo :: 验证签名内容
-		{
-		}
+
 		// 执行到此处 说明收到了正确的由主节点发送的pre-prepare消息
 		// 广播prepare消息 切换到preparing状态  重置超时 等待接收足够多的prepare消息
 		// 向所有验证者发起prepare 消息
@@ -163,9 +167,19 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 				Sign:     nil, // todo:: 需要签名
 			},
 		}
-		pbft.appendLogMsg(model.NewPbftMessage(newMsg))
+
+		// 签名
+		signedInfo, err := pbft.signMsgInfo(newMsg.Info)
+		if err != nil {
+			pbft.logger.Debugf("当前状态为 %s, 发起prepare消息时 在签名过程中发生错误 err: %v ",
+				model.States_name[int32(curState)], err)
+		}
+		newMsg.Info = signedInfo
+		signedMsg := model.NewPbftMessage(newMsg)
+		pbft.appendLogMsg(signedMsg)
+
 		// 广播消息
-		pbft.switcher.Broadcast(model.NewPbftMessage(newMsg))
+		pbft.switcher.Broadcast(signedMsg)
 		pbft.sm.ChangeState(model.States_Preparing)
 		pbft.timer.Reset(10 * time.Second)
 
@@ -208,9 +222,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 				string(content.Info.SignerId))
 			return
 		}
-		// todo:: 待验证签名
-		{
-		}
+
 		// 加入到prepare列表 当满足大于 2f+1时 进入checking状态
 		for _, m := range content.OtherInfos {
 			pbft.appendLogMsg(model.NewPbftMessage(&model.PbftGenericMessage{Info: m}))
@@ -262,6 +274,13 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 				SignerId: pbft.ws.CurVerfier.PublickKey,
 				Sign:     nil, // todo:: 需要签名
 			}
+			signedInfo, err := pbft.signMsgInfo(newMsg.Info)
+			newMsg.Info = signedInfo
+			if err != nil {
+				pbft.logger.Debugf("当前状态为 %s, 发起prepare消息时 在签名过程中发生错误 err: %v ",
+					model.States_name[int32(curState)], err)
+			}
+
 		} else {
 			newMsg.Info = localprepareMsg
 		}

@@ -107,3 +107,10 @@ func VerifySign(pub *ecdsa.PublicKey, sign string, hash string) bool {
 
 	return ecdsa.Verify(pub, hashBytes, new(big.Int).SetBytes(r), new(big.Int).SetBytes(s))
 }
+
+func Hex2Bytes(hexStr string) ([]byte, error) {
+	if strings.HasPrefix(hexStr, "0x") || strings.HasPrefix(hexStr, "0X") {
+		hexStr = hexStr[2:]
+	}
+	return hex.DecodeString(hexStr)
+}
