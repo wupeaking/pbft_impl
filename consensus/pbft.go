@@ -93,6 +93,7 @@ func (pbft *PBFT) Daemon() {
 	pbft.timer.Reset(10 * time.Second)
 	pbft.timer.Reset(300 * time.Millisecond)
 	go pbft.tiggerStateMigrateLoop()
+	go pbft.garbageCollection()
 
 	for {
 		select {
@@ -129,4 +130,15 @@ func (pbft *PBFT) tiggerStateMigrateLoop() {
 
 // 定时清除无用的logMsg
 func (pbft *PBFT) garbageCollection() {
+	for {
+		select {
+		case <-time.After(10 * time.Second):
+			for key := range pbft.sm.logMsg {
+				// 保留个阈值
+				if key < pbft.ws.BlockNum-10 {
+					delete(pbft.sm.logMsg, key)
+				}
+			}
+		}
+	}
 }
