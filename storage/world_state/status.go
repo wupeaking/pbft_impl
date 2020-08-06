@@ -10,21 +10,20 @@ import (
 // 定义整个全局状态
 
 type WroldState struct {
-	BlockNum   uint64           // 当前区块编号
-	PrevBlock  string           // 前一个区块hash
-	BlockID    string           // 当前区块hash
-	Verifiers  []model.Verifier // 当前所有的验证者
-	VerifierNo int              // 验证者所处编号 如果为-1  表示不是验证者
-	CurVerfier model.Verifier
-	View       uint64 // 当前视图
+	BlockNum   uint64            `json:"blockNum"`   // 当前区块编号
+	PrevBlock  string            `json:"prevBlock"`  // 前一个区块hash
+	BlockID    string            `json:"blockID"`    // 当前区块hash
+	Verifiers  []*model.Verifier `json:"verifiers"`  // 当前所有的验证者
+	VerifierNo int               `josn:"verifierNo"` // 验证者所处编号 如果为-1  表示不是验证者
+	CurVerfier *model.Verifier   `json:"curVerfier"`
+	View       uint64            `json:"view"` // 当前视图
 	db         *cache.DBCache
-	sync.Mutex
+	sync.Mutex `json:"-"`
 }
 
 func New() *WroldState {
 	//todo:: 加载数据库 加载到最新的ws
-
-	return &WroldState{}
+	return &WroldState{db: cache.New()}
 }
 
 func (ws *WroldState) IncreaseBlockNum() {
@@ -52,7 +51,7 @@ func (ws *WroldState) SetView(v uint64) {
 }
 
 func (ws *WroldState) SetValue(blockNum uint64, prevBlock string, blockID string,
-	verifiers []model.Verifier) {
+	verifiers []*model.Verifier) {
 	ws.Lock()
 	defer func() { ws.Unlock() }()
 	if blockNum != 0 {
