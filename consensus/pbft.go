@@ -100,16 +100,6 @@ func (pbft *PBFT) Daemon() {
 			// 有消息进入
 			pbft.StateMigrate(pbft.Msgs.GetMsg())
 
-		// switch pbft.sm.CurrentState() {
-		// case model.States_NotStartd:
-
-		// case model.States_PrePreparing:
-		// case model.States_Preparing:
-		// case model.States_Checking:
-		// case model.States_Committing:
-		// case model.States_Finished:
-		// case model.States_ViewChanging:
-		// }
 		case s := <-pbft.stateMigSig:
 			pbft.tiggerMigrateProcess(s)
 

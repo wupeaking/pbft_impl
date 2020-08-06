@@ -12,4 +12,5 @@ type Tx struct {
 	Amount    big.Int
 	Sequeue   string
 	Input     []byte
+	Sign      []byte
 }

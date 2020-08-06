@@ -13,6 +13,8 @@ type StateMachine struct {
 	sync.Mutex
 	// 区块编号  <---->  接收到的消息日志
 	logMsg map[uint64][]LogMessage
+	// Receive
+	receivedBlock *model.PbftBlock
 }
 
 type LogMessage struct {
@@ -318,6 +320,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		if bytes.Compare(content.Block.SignerId, pbft.ws.Verifiers[primary].PublickKey) != 0 {
 			return
 		}
+		pbft.sm.receivedBlock = content.Block
 		// 说明已经收到提交的区块 并且验证通过
 		// 广播Commit消息
 		newMsg := model.PbftGenericMessage{
