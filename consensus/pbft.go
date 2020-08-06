@@ -23,6 +23,7 @@ type PBFT struct {
 	ws          *world_state.WroldState
 	stateMigSig chan model.States // 状态迁移信号
 	txPool      *transaction.TxPool
+	tiggerTimer *time.Timer
 }
 
 type MsgQueue struct {
@@ -69,6 +70,10 @@ func New(ws *world_state.WroldState, txPool *transaction.TxPool) (*PBFT, error) 
 	pbft.sm = NewStateMachine()
 	pbft.timer = time.NewTimer(10 * time.Second)
 	pbft.timer.Stop()
+
+	pbft.tiggerTimer = time.NewTimer(300 * time.Millisecond)
+	pbft.tiggerTimer.Stop()
+
 	pbft.logger = log.New()
 	pbft.logger.SetLevel(log.DebugLevel)
 	pbft.logger.WithField("module", "consensus")
@@ -86,22 +91,27 @@ func New(ws *world_state.WroldState, txPool *transaction.TxPool) (*PBFT, error) 
 func (pbft *PBFT) Daemon() {
 	// 启动超时定时器
 	pbft.timer.Reset(10 * time.Second)
+	pbft.timer.Reset(300 * time.Millisecond)
+	go pbft.tiggerStateMigrateLoop()
+
 	for {
 		select {
 		case <-pbft.Msgs.WaitMsg():
 			// 有消息进入
 			pbft.StateMigrate(pbft.Msgs.GetMsg())
 
-			// switch pbft.sm.CurrentState() {
-			// case model.States_NotStartd:
+		// switch pbft.sm.CurrentState() {
+		// case model.States_NotStartd:
 
-			// case model.States_PrePreparing:
-			// case model.States_Preparing:
-			// case model.States_Checking:
-			// case model.States_Committing:
-			// case model.States_Finished:
-			// case model.States_ViewChanging:
-			// }
+		// case model.States_PrePreparing:
+		// case model.States_Preparing:
+		// case model.States_Checking:
+		// case model.States_Committing:
+		// case model.States_Finished:
+		// case model.States_ViewChanging:
+		// }
+		case s := <-pbft.stateMigSig:
+			pbft.tiggerMigrateProcess(s)
 
 		case <-pbft.timer.C:
 			// 有超时
@@ -115,5 +125,14 @@ func (pbft *PBFT) tiggerMigrate(s model.States) {
 		return
 	default:
 		return
+	}
+}
+
+func (pbft *PBFT) tiggerStateMigrateLoop() {
+	for {
+		select {
+		case <-pbft.tiggerTimer.C:
+			pbft.tiggerMigrate(0)
+		}
 	}
 }

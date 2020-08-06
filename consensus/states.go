@@ -416,3 +416,85 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		pbft.switcher.Broadcast(model.NewPbftMessage(newMsg))
 	}
 }
+
+func (pbft *PBFT) tiggerMigrateProcess(s model.States) {
+	pbft.tiggerTimer.Stop()
+	defer func() { pbft.tiggerTimer.Reset(300 * time.Millisecond) }()
+
+	curState := pbft.sm.CurrentState()
+	switch curState {
+	case model.States_NotStartd:
+		// 暂时啥也不做
+	case model.States_PrePreparing:
+		logMsg := pbft.sm.logMsg[pbft.ws.BlockNum+1]
+		primary := (pbft.ws.BlockNum + 1 + pbft.ws.View) % uint64(len(pbft.ws.Verifiers))
+		for i := range logMsg {
+			if logMsg[i].MessageType != model.MessageType_PrePrepare {
+				continue
+			}
+			// 验证是否是主节点发送的
+			if bytes.Compare(logMsg[i].msg.GetGeneric().Info.SignerId, pbft.ws.Verifiers[primary].PublickKey) != 0 {
+				continue
+			}
+			if logMsg[i].view != pbft.ws.View {
+				continue
+			}
+
+			pbft.sm.ChangeState(model.States_Preparing)
+			pbft.timer.Reset(10 * time.Second)
+			break
+		}
+
+	case model.States_Preparing:
+		logMsg := pbft.sm.logMsg[pbft.ws.BlockNum+1]
+		// 计算fault 数量
+		f := (len(pbft.ws.Verifiers) - 1) / 3
+		minNodes := 2*f + 1
+		nodes := make(map[string]bool)
+		for _, log := range logMsg {
+			if log.MessageType == model.MessageType_Prepare && log.view == pbft.ws.View {
+				nodes[string(log.msg.GetGeneric().Info.SignerId)] = true
+			}
+			if len(nodes) >= minNodes {
+				// 满足节点数量  进入checking
+				pbft.sm.ChangeState(model.States_Checking)
+				pbft.timer.Reset(10 * time.Second)
+				break
+			}
+		}
+
+	case model.States_Checking:
+		// 本地是否已经有有效的区块包
+		logMsg := pbft.sm.logMsg[pbft.ws.BlockNum+1]
+		for i := range logMsg {
+			if logMsg[i].block != nil && logMsg[i].block.BlockNum == pbft.ws.BlockNum+1 {
+				primary := (pbft.ws.BlockNum + 1 + pbft.ws.View) % uint64(len(pbft.ws.Verifiers))
+				// 验证是否是主节点发送的
+				if bytes.Compare(logMsg[i].block.SignerId, pbft.ws.Verifiers[primary].PublickKey) != 0 {
+					continue
+				}
+				pbft.sm.ChangeState(model.States_Committing)
+				pbft.timer.Reset(10 * time.Second)
+				break
+			}
+		}
+
+	case model.States_Committing:
+		logMsg := pbft.sm.logMsg[pbft.ws.BlockNum+1]
+		// 计算fault 数量
+		f := (len(pbft.ws.Verifiers) - 1) / 3
+		minNodes := 2*f + 1
+		nodes := make(map[string]bool)
+		for _, log := range logMsg {
+			if log.MessageType == model.MessageType_Commit && log.view == pbft.ws.View {
+				nodes[string(log.msg.GetGeneric().Info.SignerId)] = true
+			}
+			if len(nodes) >= minNodes {
+				// 满足节点数量  进入finisd
+				pbft.sm.ChangeState(model.States_Finished)
+				pbft.timer.Reset(10 * time.Second)
+				return
+			}
+		}
+	}
+}

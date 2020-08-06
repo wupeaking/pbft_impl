@@ -116,7 +116,7 @@ func (pbft *PBFT) SignMsg(msg *model.PbftMessage) (*model.PbftMessage, error) {
 		vc.Info = info
 		return model.NewPbftMessage(vc), nil
 	}
-	return nil, fmt.Errorf("为支持的消息类型")
+	return nil, fmt.Errorf("未支持的消息类型")
 }
 
 func (pbft *PBFT) signMsgInfo(msgInfo *model.PbftMessageInfo) (*model.PbftMessageInfo, error) {
