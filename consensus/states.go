@@ -94,6 +94,14 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		if primary == uint64(pbft.ws.VerifierNo) {
 			pbft.logger.Debugf("当前状态为 %s, 提议的新区块为: %d, 视图编号为: %d, 当前节点为主验证节点 ",
 				model.States_name[int32(curState)], pbft.ws.BlockNum+1, pbft.ws.View)
+
+			// 尝试打包一个区块
+			blk, err := pbft.packageBlock()
+			if err != nil {
+				pbft.logger.Errorf("当前状态为 %s, 准备打包新区块时发生了错误 err: %v",
+					model.States_name[int32(curState)], err)
+				return
+			}
 			// 向所有验证者发起pre-prepare 消息
 			newMsg := model.PbftGenericMessage{
 				Info: &model.PbftMessageInfo{MsgType: model.MessageType_PrePrepare,
@@ -101,6 +109,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 					SignerId: pbft.ws.CurVerfier.PublickKey,
 					Sign:     nil,
 				},
+				Block: blk,
 			}
 			// 签名
 			signedMsg, err := pbft.SignMsg(model.NewPbftMessage(newMsg))
@@ -499,5 +508,9 @@ func (pbft *PBFT) tiggerMigrateProcess(s model.States) {
 				return
 			}
 		}
+	case model.States_Finished:
+		// play block
+		// 更新到最新的状态
+		// 切换到not start  等待下一轮循环
 	}
 }

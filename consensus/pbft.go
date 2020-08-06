@@ -15,7 +15,7 @@ import (
 type PBFT struct {
 	// 当前所属状态
 	sm          *StateMachine
-	verifiers   map[string]model.Verifier
+	verifiers   map[string]*model.Verifier
 	Msgs        *MsgQueue
 	timer       *time.Timer
 	switcher    network.SwitcherI
@@ -78,7 +78,7 @@ func New(ws *world_state.WroldState, txPool *transaction.TxPool) (*PBFT, error) 
 	pbft.logger.SetLevel(log.DebugLevel)
 	pbft.logger.WithField("module", "consensus")
 	pbft.ws = ws
-	pbft.verifiers = make(map[string]model.Verifier)
+	pbft.verifiers = make(map[string]*model.Verifier)
 	for _, v := range ws.Verifiers {
 		pbft.verifiers[string(v.PublickKey)] = v
 	}
@@ -125,4 +125,8 @@ func (pbft *PBFT) tiggerStateMigrateLoop() {
 			pbft.tiggerMigrate(0)
 		}
 	}
+}
+
+// 定时清除无用的logMsg
+func (pbft *PBFT) garbageCollection() {
 }
