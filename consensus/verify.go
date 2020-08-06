@@ -40,6 +40,10 @@ func (pbft *PBFT) VerfifyMsg(msg *model.PbftMessage) bool {
 }
 
 func (pbft *PBFT) verfifyMsgInfo(msgInfo *model.PbftMessageInfo) bool {
+	if pbft.isVaildVerifier(msgInfo.SignerId) {
+		return false
+	}
+
 	pubKey, err := cryptogo.LoadPublicKey(fmt.Sprintf("%0x", msgInfo.SignerId))
 	if err != nil {
 		return false
@@ -56,6 +60,10 @@ func (pbft *PBFT) verfifyMsgInfo(msgInfo *model.PbftMessageInfo) bool {
 }
 
 func (pbft *PBFT) verfifyBlock(blk *model.PbftBlock) bool {
+	if pbft.isVaildVerifier(blk.SignerId) {
+		return false
+	}
+
 	pubKey, err := cryptogo.LoadPublicKey(fmt.Sprintf("%0x", blk.SignerId))
 	if err != nil {
 		return false
@@ -157,4 +165,31 @@ func (pbft *PBFT) signBlock(blk *model.PbftBlock) (*model.PbftBlock, error) {
 	}
 	blk.Sign = s
 	return blk, nil
+}
+
+func (pbft *PBFT) isVaildVerifier(singerID []byte) bool {
+	_, ok := pbft.verifiers[string(singerID)]
+	return ok
+}
+
+func (pbft *PBFT) isValidMsg(msg *model.PbftMessage) bool {
+	if msg == nil {
+		return false
+	}
+	gm := msg.GetGeneric()
+	if gm != nil {
+		if gm.Info == nil {
+			return false
+		}
+		return true
+	}
+
+	vc := msg.GetViewChange()
+	if vc != nil {
+		if vc.Info == nil {
+			return false
+		}
+		return true
+	}
+	return false
 }
