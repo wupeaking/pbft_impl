@@ -7,6 +7,6 @@ import (
 
 func PublicKeyToAddress(pub []byte) *Address {
 	hash := sha256.New().Sum(pub)
-	hexStr := fmt.Sprintf("0x%0x", hash)
+	hexStr := fmt.Sprintf("0x%x", hash)
 	return &Address{Address: hexStr}
 }
