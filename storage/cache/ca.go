@@ -21,12 +21,12 @@ type DBCache struct {
 	metaDB database.DB
 }
 
-func New() *DBCache {
-	blockDB, err := database.NewLevelDB("./pbft/block.db")
+func New(path string) *DBCache {
+	blockDB, err := database.NewLevelDB(path + "./pbft/block.db")
 	if err != nil {
 		panic(err)
 	}
-	metaDB, err := database.NewLevelDB("./pbft/meta.db")
+	metaDB, err := database.NewLevelDB(path + "./pbft/meta.db")
 	if err != nil {
 		panic(err)
 	}
@@ -90,6 +90,20 @@ func (dbc *DBCache) GetBlockByNum(num uint64) (*model.PbftBlock, error) {
 	}
 
 	var blk model.PbftBlock
+	err = proto.Unmarshal([]byte(value), &blk)
+	return &blk, err
+}
+
+func (dbc *DBCache) GetGenesisBlock() (*model.Genesis, error) {
+	value, err := dbc.blockDB.Get(fmt.Sprintf("%d", 0))
+	if err != nil {
+		return nil, err
+	}
+	if value == "" {
+		return nil, nil
+	}
+
+	var blk model.Genesis
 	err = proto.Unmarshal([]byte(value), &blk)
 	return &blk, err
 }

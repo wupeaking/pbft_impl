@@ -1,6 +1,10 @@
 package world_state
 
-import "github.com/wupeaking/pbft_impl/model"
+import (
+	"reflect"
+
+	"github.com/wupeaking/pbft_impl/model"
+)
 
 func (ws *WroldState) InsertBlock(block *model.PbftBlock) error {
 	return ws.db.Insert(block)
@@ -14,4 +18,21 @@ func (ws *WroldState) UpdateLastWorldState() error {
 		Verifiers:   ws.Verifiers,
 		LastView:    ws.View,
 	})
+}
+
+func (ws *WroldState) GetBlock(key interface{}) (*model.PbftBlock, error) {
+	switch x := key.(type) {
+	case int, uint, int64, uint64:
+		v := reflect.ValueOf(key).Uint()
+		return ws.db.GetBlockByNum(v)
+	case string:
+		return ws.db.GetBlockByID(x)
+	case []byte:
+		return ws.db.GetBlockByID(string(x))
+	}
+	return nil, nil
+}
+
+func (ws *WroldState) GetGenesis() (*model.Genesis, error) {
+	return ws.db.GetGenesisBlock()
 }

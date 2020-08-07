@@ -21,9 +21,8 @@ type WroldState struct {
 	sync.Mutex `json:"-"`
 }
 
-func New() *WroldState {
-	//todo:: 加载数据库 加载到最新的ws
-	return &WroldState{db: cache.New()}
+func New(path string) *WroldState {
+	return &WroldState{db: cache.New(path)}
 }
 
 func (ws *WroldState) IncreaseBlockNum() {
