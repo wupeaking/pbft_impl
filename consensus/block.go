@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/wupeaking/pbft_impl/model"
-	"github.com/wupeaking/pbft_impl/transaction"
 )
 
 func (pbft *PBFT) packageBlock() (*model.PbftBlock, error) {
@@ -15,7 +14,7 @@ func (pbft *PBFT) packageBlock() (*model.PbftBlock, error) {
 		BlockId:  []byte(pbft.ws.BlockID),
 		SignerId: pbft.ws.CurVerfier.PublickKey,
 	}
-	txs := make([]*transaction.Tx, 0)
+	txs := make([]*model.Tx, 0)
 	max := 3000
 	i := 0
 	for {

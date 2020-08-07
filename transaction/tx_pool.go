@@ -1,12 +1,14 @@
 package transaction
 
+import "github.com/wupeaking/pbft_impl/model"
+
 type TxPool struct {
 }
 
-func (txpool *TxPool) GetTx() *Tx {
+func (txpool *TxPool) GetTx() *model.Tx {
 	return nil
 }
 
-func (txpool *TxPool) RemoveTx(*Tx) {
+func (txpool *TxPool) RemoveTx(*model.Tx) {
 
 }
