@@ -242,8 +242,13 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		// 	pbft.appendLogMsg(model.NewPbftMessage(&model.PbftGenericMessage{Info: m}))
 		// }
 		// 计算fault 数量
-		f := (len(pbft.ws.Verifiers) - 1) / 3
-		minNodes := 2*f + 1
+		f := len(pbft.ws.Verifiers) / 3
+		var minNodes int
+		if f == 0 {
+			minNodes = len(pbft.ws.Verifiers)
+		} else {
+			minNodes = 2*f + 1
+		}
 		nodes := make(map[string]bool)
 		logMsg := pbft.sm.logMsg[pbft.ws.BlockNum+1]
 
@@ -379,8 +384,13 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		}
 
 		// 计算fault 数量
-		f := (len(pbft.ws.Verifiers) - 1) / 3
-		minNodes := 2*f + 1
+		f := len(pbft.ws.Verifiers) / 3
+		var minNodes int
+		if f == 0 {
+			minNodes = len(pbft.ws.Verifiers)
+		} else {
+			minNodes = 2*f + 1
+		}
 		nodes := make(map[string]bool)
 		logMsg := pbft.sm.logMsg[pbft.ws.BlockNum+1]
 
@@ -426,6 +436,14 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		newMsg.OtherInfos = commitMsgs
 		// 广播消息
 		pbft.switcher.Broadcast(model.NewPbftMessage(newMsg))
+
+	case model.States_Finished:
+		// 停止超时定时器
+		// 重放区块
+		// 切换到not start
+		pbft.timer.Stop()
+		pbft.ApplyBlock(pbft.sm.receivedBlock)
+		pbft.sm.ChangeState(model.States_NotStartd)
 	}
 }
 
@@ -460,8 +478,13 @@ func (pbft *PBFT) tiggerMigrateProcess(s model.States) {
 	case model.States_Preparing:
 		logMsg := pbft.sm.logMsg[pbft.ws.BlockNum+1]
 		// 计算fault 数量
-		f := (len(pbft.ws.Verifiers) - 1) / 3
-		minNodes := 2*f + 1
+		f := len(pbft.ws.Verifiers) / 3
+		var minNodes int
+		if f == 0 {
+			minNodes = len(pbft.ws.Verifiers)
+		} else {
+			minNodes = 2*f + 1
+		}
 		nodes := make(map[string]bool)
 		for _, log := range logMsg {
 			if log.MessageType == model.MessageType_Prepare && log.view == pbft.ws.View {
@@ -494,8 +517,13 @@ func (pbft *PBFT) tiggerMigrateProcess(s model.States) {
 	case model.States_Committing:
 		logMsg := pbft.sm.logMsg[pbft.ws.BlockNum+1]
 		// 计算fault 数量
-		f := (len(pbft.ws.Verifiers) - 1) / 3
-		minNodes := 2*f + 1
+		f := len(pbft.ws.Verifiers) / 3
+		var minNodes int
+		if f == 0 {
+			minNodes = len(pbft.ws.Verifiers)
+		} else {
+			minNodes = 2*f + 1
+		}
 		nodes := make(map[string]bool)
 		for _, log := range logMsg {
 			if log.MessageType == model.MessageType_Commit && log.view == pbft.ws.View {

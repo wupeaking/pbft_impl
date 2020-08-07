@@ -105,8 +105,24 @@ func (pbft *PBFT) Daemon() {
 			pbft.tiggerMigrateProcess(s)
 
 		case <-pbft.timer.C:
-			// 有超时
+			// 有超时 则进入viewchang状态 发起viewchange消息
+			pbft.sm.ChangeState(model.States_ViewChanging)
+			newMsg := model.PbftViewChange{
+				Info: &model.PbftMessageInfo{MsgType: model.MessageType_ViewChange,
+					View: pbft.ws.View, SeqNum: pbft.ws.BlockNum + 1,
+					SignerId: pbft.ws.CurVerfier.PublickKey,
+					Sign:     nil,
+				},
+			}
+			signedMsg, err := pbft.SignMsg(model.NewPbftMessage(newMsg))
+			if err != nil {
+				pbft.logger.Errorf("在viewchanging状态 进行消息签名时 发生了错误, err: %v", err)
+				return
+			}
+			pbft.appendLogMsg(signedMsg)
+			pbft.switcher.Broadcast(signedMsg)
 		}
+
 	}
 }
 

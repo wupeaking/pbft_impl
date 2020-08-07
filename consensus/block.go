@@ -40,5 +40,6 @@ func (pbft *PBFT) ApplyBlock(block *model.PbftBlock) error {
 	pbft.ws.IncreaseBlockNum()
 	pbft.ws.SetValue(0, pbft.ws.BlockID, string(block.BlockId), nil)
 	pbft.ws.InsertBlock(block)
+	pbft.ws.UpdateLastWorldState()
 	return nil
 }
