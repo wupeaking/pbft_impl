@@ -444,6 +444,57 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		pbft.timer.Stop()
 		pbft.ApplyBlock(pbft.sm.receivedBlock)
 		pbft.sm.ChangeState(model.States_NotStartd)
+
+	case model.States_ViewChanging:
+		content := msg.GetViewChange()
+		if content == nil {
+			pbft.logger.Warnf("当前状态为%s 但是收到的消息类型为GenicMessage", model.States_name[int32(curState)])
+			return
+		}
+		msgType := content.Info.MsgType
+		if msgType != model.MessageType_ViewChange {
+			pbft.logger.Warnf("当前节点处于ViewChanging 期待收到的消息类型为ViewChanging  此次消息类型为: %s, 忽略此次消息 ",
+				model.MessageType_name[int32(msgType)])
+			return
+		}
+		// 1.需要区块编号和本机对应 2.视图编号与本机对应 3.验证者处于验证者列表中 4.签名正确
+		if content.Info.SeqNum != pbft.ws.BlockNum+1 {
+			return
+		}
+		if content.Info.View != pbft.ws.View {
+			return
+		}
+
+		// 计算fault 数量
+		f := len(pbft.ws.Verifiers) / 3
+		var minNodes int
+		if f == 0 {
+			minNodes = len(pbft.ws.Verifiers)
+		} else {
+			minNodes = 2*f + 1
+		}
+		nodes := make(map[string]bool)
+		logMsg := pbft.sm.logMsg[pbft.ws.BlockNum+1]
+
+		viewMsgs := make([]*model.PbftMessageInfo, 0)
+		// var localviewMsg *model.PbftMessageInfo
+		for _, log := range logMsg {
+			if log.MessageType == model.MessageType_ViewChange && log.view == pbft.ws.View {
+				if bytes.Compare(log.msg.GetViewChange().Info.SignerId, pbft.ws.CurVerfier.PublickKey) == 0 {
+					// localviewMsg = log.msg.GetViewChange().Info
+				} else {
+					viewMsgs = append(viewMsgs, log.msg.GetViewChange().Info)
+				}
+				nodes[string(log.msg.GetViewChange().Info.SignerId)] = true
+			}
+			if len(nodes) >= minNodes {
+				// 满足节点数量   进入not start view +1
+				pbft.ws.IncreaseView()
+				pbft.sm.ChangeState(model.States_NotStartd)
+				pbft.timer.Reset(10 * time.Second)
+				return
+			}
+		}
 	}
 }
 
@@ -540,5 +591,40 @@ func (pbft *PBFT) tiggerMigrateProcess(s model.States) {
 		// play block
 		// 更新到最新的状态
 		// 切换到not start  等待下一轮循环
+		pbft.timer.Stop()
+		pbft.ApplyBlock(pbft.sm.receivedBlock)
+		pbft.sm.ChangeState(model.States_NotStartd)
+
+	case model.States_ViewChanging:
+		// 计算fault 数量
+		f := len(pbft.ws.Verifiers) / 3
+		var minNodes int
+		if f == 0 {
+			minNodes = len(pbft.ws.Verifiers)
+		} else {
+			minNodes = 2*f + 1
+		}
+		nodes := make(map[string]bool)
+		logMsg := pbft.sm.logMsg[pbft.ws.BlockNum+1]
+
+		viewMsgs := make([]*model.PbftMessageInfo, 0)
+		// var localviewMsg *model.PbftMessageInfo
+		for _, log := range logMsg {
+			if log.MessageType == model.MessageType_ViewChange && log.view == pbft.ws.View {
+				if bytes.Compare(log.msg.GetViewChange().Info.SignerId, pbft.ws.CurVerfier.PublickKey) == 0 {
+					// localviewMsg = log.msg.GetViewChange().Info
+				} else {
+					viewMsgs = append(viewMsgs, log.msg.GetViewChange().Info)
+				}
+				nodes[string(log.msg.GetViewChange().Info.SignerId)] = true
+			}
+			if len(nodes) >= minNodes {
+				// 满足节点数量   进入not start view +1
+				pbft.ws.IncreaseView()
+				pbft.sm.ChangeState(model.States_NotStartd)
+				pbft.timer.Reset(10 * time.Second)
+				return
+			}
+		}
 	}
 }
