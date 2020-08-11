@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/parnurzeal/gorequest"
 	"github.com/wupeaking/pbft_impl/model"
+	"github.com/wupeaking/pbft_impl/network"
 )
 
 type HTTPNetWork struct {
@@ -18,7 +19,7 @@ type HTTPNetWork struct {
 	msgQueue     chan interface{}
 }
 
-func New(nodeAddrs []string, local string) *HTTPNetWork {
+func New(nodeAddrs []string, local string) network.SwitcherI {
 	return &HTTPNetWork{
 		Addrs:        nodeAddrs,
 		LocalAddress: local,

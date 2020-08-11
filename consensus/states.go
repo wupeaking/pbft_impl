@@ -37,6 +37,7 @@ func (pbft *PBFT) appendLogMsg(msg *model.PbftMessage) {
 			view:        content.Info.View,
 			block:       content.Block,
 		})
+		pbft.sm.logMsg[content.Info.SeqNum] = logMsgs
 		return
 	}
 	if content := msg.GetViewChange(); content != nil {
@@ -46,6 +47,7 @@ func (pbft *PBFT) appendLogMsg(msg *model.PbftMessage) {
 			msg:         msg,
 			view:        content.Info.View,
 		})
+		pbft.sm.logMsg[content.Info.SeqNum] = logMsgs
 	}
 }
 
@@ -61,12 +63,14 @@ func (sm *StateMachine) CurrentState() model.States {
 
 func NewStateMachine() *StateMachine {
 	return &StateMachine{
-		state: model.States_NotStartd,
+		state:  model.States_NotStartd,
+		logMsg: make(map[uint64][]LogMessage),
 	}
 }
 
 //Migrate  状态转移
 func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
+	pbft.logger.Debugf("进入状态转移函数, 当前状态: %v", pbft.sm.state)
 	if !pbft.VerfifyMsg(msg) {
 		pbft.logger.Warnf("接收到无效的msg")
 		return
@@ -91,7 +95,10 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 
 		// 根据当前状态 判断是否是 primary Verifier
 		primary := (pbft.ws.BlockNum + 1 + pbft.ws.View) % uint64(len(pbft.ws.Verifiers))
-		if primary == uint64(pbft.ws.VerifierNo) {
+		if len(pbft.ws.Verifiers) == 1 {
+			primary = 0
+		}
+		if int(primary) == pbft.ws.VerifierNo {
 			pbft.logger.Debugf("当前状态为 %s, 提议的新区块为: %d, 视图编号为: %d, 当前节点为主验证节点 ",
 				model.States_name[int32(curState)], pbft.ws.BlockNum+1, pbft.ws.View)
 
@@ -112,7 +119,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 				Block: blk,
 			}
 			// 签名
-			signedMsg, err := pbft.SignMsg(model.NewPbftMessage(newMsg))
+			signedMsg, err := pbft.SignMsg(model.NewPbftMessage(&newMsg))
 			if err != nil {
 				pbft.logger.Debugf("当前状态为 %s, 发起pre-prepare消息时 在签名过程中发生错误 err: %v ",
 					model.States_name[int32(curState)], err)
@@ -164,6 +171,9 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		}
 
 		primary := (pbft.ws.BlockNum + 1 + content.Info.View) % uint64(len(pbft.ws.Verifiers))
+		if len(pbft.ws.Verifiers) == 1 {
+			primary = 0
+		}
 		// 验证是否是主节点发送的
 		if bytes.Compare(content.Info.SignerId, pbft.ws.Verifiers[primary].PublickKey) != 0 {
 			pbft.logger.Warnf("当前节点处于PrePreparing 收到pre-prepare消息 计算的主节点的公钥不一致, 主节点标号为: %d",
@@ -189,7 +199,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 			return
 		}
 		newMsg.Info = signedInfo
-		signedMsg := model.NewPbftMessage(newMsg)
+		signedMsg := model.NewPbftMessage(&newMsg)
 		pbft.appendLogMsg(signedMsg)
 
 		// 广播消息
@@ -270,11 +280,12 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 					localprepareMsg = log.msg.GetGeneric().Info
 				} else {
 					prepareMsgs = append(prepareMsgs, log.msg.GetGeneric().Info)
+					nodes[string(log.msg.GetGeneric().Info.SignerId)] = true
 				}
 
-				nodes[string(log.msg.GetGeneric().Info.SignerId)] = true
 			}
-			if len(nodes) >= minNodes {
+			// 去掉自己 只需要2f
+			if len(nodes) >= minNodes-1 {
 				// 满足节点数量  进入checking
 				pbft.sm.ChangeState(model.States_Checking)
 				// todo:: 如果本机已经保存了完整区块 广播区块
@@ -306,7 +317,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		}
 		newMsg.OtherInfos = prepareMsgs
 		// 广播消息
-		pbft.switcher.Broadcast(model.NewPbftMessage(newMsg))
+		pbft.switcher.Broadcast(model.NewPbftMessage(&newMsg))
 
 	case model.States_Checking:
 		// // 先看看本地是否已经有有效的区块包
@@ -330,6 +341,9 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 			return
 		}
 		primary := (pbft.ws.BlockNum + 1 + content.Info.View) % uint64(len(pbft.ws.Verifiers))
+		if len(pbft.ws.Verifiers) == 1 {
+			primary = 0
+		}
 		// 验证是否是主节点发送的
 		if bytes.Compare(content.Block.SignerId, pbft.ws.Verifiers[primary].PublickKey) != 0 {
 			return
@@ -337,7 +351,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		pbft.sm.receivedBlock = content.Block
 		// 说明已经收到提交的区块 并且验证通过
 		// 广播Commit消息
-		newMsg := model.PbftGenericMessage{
+		newMsg := &model.PbftGenericMessage{
 			Info: &model.PbftMessageInfo{MsgType: model.MessageType_Commit,
 				View: pbft.ws.View, SeqNum: pbft.ws.BlockNum + 1,
 				SignerId: pbft.ws.CurVerfier.PublickKey,
@@ -402,10 +416,10 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 					localcommitMsg = log.msg.GetGeneric().Info
 				} else {
 					commitMsgs = append(commitMsgs, log.msg.GetGeneric().Info)
+					nodes[string(log.msg.GetGeneric().Info.SignerId)] = true
 				}
-				nodes[string(log.msg.GetGeneric().Info.SignerId)] = true
 			}
-			if len(nodes) >= minNodes {
+			if len(nodes) >= minNodes-1 {
 				// 满足节点数量  进入checking
 				pbft.sm.ChangeState(model.States_Finished)
 				pbft.timer.Reset(10 * time.Second)
@@ -435,14 +449,14 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		}
 		newMsg.OtherInfos = commitMsgs
 		// 广播消息
-		pbft.switcher.Broadcast(model.NewPbftMessage(newMsg))
+		pbft.switcher.Broadcast(model.NewPbftMessage(&newMsg))
 
 	case model.States_Finished:
 		// 停止超时定时器
 		// 重放区块
 		// 切换到not start
 		pbft.timer.Stop()
-		pbft.ApplyBlock(pbft.sm.receivedBlock)
+		pbft.CommitBlock(pbft.sm.receivedBlock)
 		pbft.sm.ChangeState(model.States_NotStartd)
 
 	case model.States_ViewChanging:
@@ -484,10 +498,11 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 					// localviewMsg = log.msg.GetViewChange().Info
 				} else {
 					viewMsgs = append(viewMsgs, log.msg.GetViewChange().Info)
+					nodes[string(log.msg.GetViewChange().Info.SignerId)] = true
 				}
-				nodes[string(log.msg.GetViewChange().Info.SignerId)] = true
+
 			}
-			if len(nodes) >= minNodes {
+			if len(nodes) >= minNodes-1 {
 				// 满足节点数量   进入not start view +1
 				pbft.ws.IncreaseView()
 				pbft.sm.ChangeState(model.States_NotStartd)
@@ -499,8 +514,9 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 }
 
 func (pbft *PBFT) tiggerMigrateProcess(s model.States) {
-	pbft.tiggerTimer.Stop()
-	defer func() { pbft.tiggerTimer.Reset(300 * time.Millisecond) }()
+	//pbft.logger.Debugf("进入触发迁移处理函数, 当前状态: %v", pbft.sm.state)
+	//pbft.tiggerTimer.Stop()
+	defer func() { pbft.tiggerTimer.Reset(1000 * time.Millisecond) }()
 
 	curState := pbft.sm.CurrentState()
 	switch curState {
@@ -509,6 +525,9 @@ func (pbft *PBFT) tiggerMigrateProcess(s model.States) {
 	case model.States_PrePreparing:
 		logMsg := pbft.sm.logMsg[pbft.ws.BlockNum+1]
 		primary := (pbft.ws.BlockNum + 1 + pbft.ws.View) % uint64(len(pbft.ws.Verifiers))
+		if len(pbft.ws.Verifiers) == 1 {
+			primary = 0
+		}
 		for i := range logMsg {
 			if logMsg[i].MessageType != model.MessageType_PrePrepare {
 				continue
@@ -539,14 +558,17 @@ func (pbft *PBFT) tiggerMigrateProcess(s model.States) {
 		nodes := make(map[string]bool)
 		for _, log := range logMsg {
 			if log.MessageType == model.MessageType_Prepare && log.view == pbft.ws.View {
+				if bytes.Compare(log.msg.GetGeneric().Info.SignerId, pbft.ws.CurVerfier.PublickKey) == 0 {
+					continue
+				}
 				nodes[string(log.msg.GetGeneric().Info.SignerId)] = true
 			}
-			if len(nodes) >= minNodes {
-				// 满足节点数量  进入checking
-				pbft.sm.ChangeState(model.States_Checking)
-				pbft.timer.Reset(10 * time.Second)
-				break
-			}
+		}
+		if len(nodes) >= minNodes-1 {
+			// 满足节点数量  进入checking
+			pbft.sm.ChangeState(model.States_Checking)
+			pbft.timer.Reset(10 * time.Second)
+			break
 		}
 
 	case model.States_Checking:
@@ -555,6 +577,9 @@ func (pbft *PBFT) tiggerMigrateProcess(s model.States) {
 		for i := range logMsg {
 			if logMsg[i].block != nil && logMsg[i].block.BlockNum == pbft.ws.BlockNum+1 {
 				primary := (pbft.ws.BlockNum + 1 + pbft.ws.View) % uint64(len(pbft.ws.Verifiers))
+				if len(pbft.ws.Verifiers) == 1 {
+					primary = 0
+				}
 				// 验证是否是主节点发送的
 				if bytes.Compare(logMsg[i].block.SignerId, pbft.ws.Verifiers[primary].PublickKey) != 0 {
 					continue
@@ -578,21 +603,24 @@ func (pbft *PBFT) tiggerMigrateProcess(s model.States) {
 		nodes := make(map[string]bool)
 		for _, log := range logMsg {
 			if log.MessageType == model.MessageType_Commit && log.view == pbft.ws.View {
+				if bytes.Compare(log.msg.GetGeneric().Info.SignerId, pbft.ws.CurVerfier.PublickKey) == 0 {
+					continue
+				}
 				nodes[string(log.msg.GetGeneric().Info.SignerId)] = true
 			}
-			if len(nodes) >= minNodes {
-				// 满足节点数量  进入finisd
-				pbft.sm.ChangeState(model.States_Finished)
-				pbft.timer.Reset(10 * time.Second)
-				return
-			}
+		}
+		if len(nodes) >= minNodes-1 {
+			// 满足节点数量  进入finisd
+			pbft.sm.ChangeState(model.States_Finished)
+			pbft.timer.Reset(10 * time.Second)
+			return
 		}
 	case model.States_Finished:
 		// play block
 		// 更新到最新的状态
 		// 切换到not start  等待下一轮循环
 		pbft.timer.Stop()
-		pbft.ApplyBlock(pbft.sm.receivedBlock)
+		pbft.CommitBlock(pbft.sm.receivedBlock)
 		pbft.sm.ChangeState(model.States_NotStartd)
 
 	case model.States_ViewChanging:

@@ -22,6 +22,7 @@ type DBCache struct {
 }
 
 func New(path string) *DBCache {
+
 	blockDB, err := database.NewLevelDB(path + "./pbft/block.db")
 	if err != nil {
 		panic(err)
@@ -53,9 +54,22 @@ func (dbc *DBCache) Insert(value interface{}) error {
 
 	case *model.BlockMeta:
 		v, _ := proto.Marshal(x)
-		return dbc.blockDB.Set(string("block_meta"), string(v))
+		return dbc.metaDB.Set(string("block_meta"), string(v))
 	}
 	return nil
+}
+
+func (dbc *DBCache) GetBlockMeta() (*model.BlockMeta, error) {
+	value, err := dbc.metaDB.Get("block_meta")
+	if err != nil {
+		return nil, err
+	}
+	if value == "" {
+		return nil, nil
+	}
+	var meta model.BlockMeta
+	err = proto.Unmarshal([]byte(value), &meta)
+	return &meta, err
 }
 
 func (dbc *DBCache) GetBlockByID(id string) (*model.PbftBlock, error) {
@@ -106,4 +120,12 @@ func (dbc *DBCache) GetGenesisBlock() (*model.Genesis, error) {
 	var blk model.Genesis
 	err = proto.Unmarshal([]byte(value), &blk)
 	return &blk, err
+}
+
+func (dbc *DBCache) SetGenesisBlock(genesis *model.Genesis) error {
+	v, err := proto.Marshal(genesis)
+	if err != nil {
+		return err
+	}
+	return dbc.blockDB.Set(fmt.Sprintf("%d", 0), string(v))
 }

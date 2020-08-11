@@ -20,6 +20,10 @@ func (ws *WroldState) UpdateLastWorldState() error {
 	})
 }
 
+func (ws *WroldState) GetBlockMeta() (*model.BlockMeta, error) {
+	return ws.db.GetBlockMeta()
+}
+
 func (ws *WroldState) GetBlock(key interface{}) (*model.PbftBlock, error) {
 	switch x := key.(type) {
 	case int, uint, int64, uint64:
@@ -35,4 +39,8 @@ func (ws *WroldState) GetBlock(key interface{}) (*model.PbftBlock, error) {
 
 func (ws *WroldState) GetGenesis() (*model.Genesis, error) {
 	return ws.db.GetGenesisBlock()
+}
+
+func (ws *WroldState) SetGenesis(g *model.Genesis) error {
+	return ws.db.SetGenesisBlock(g)
 }

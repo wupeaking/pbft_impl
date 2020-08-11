@@ -19,5 +19,6 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/syndtr/goleveldb v1.0.0
 	go.uber.org/zap v1.15.0 // indirect
+	google.golang.org/protobuf v1.23.0
 	moul.io/http2curl v1.0.0 // indirect
 )

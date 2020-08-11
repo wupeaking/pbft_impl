@@ -9,12 +9,23 @@ import (
 	cryptogo "github.com/wupeaking/pbft_impl/crypto"
 )
 
-var logger *log.Logger
+// var logger *log.Logger
+var logger *log.Entry
 
 func init() {
-	logger = log.New()
-	logger.SetLevel(log.DebugLevel)
-	logger.WithField("module", "node")
+	logg := log.New()
+	logg.SetLevel(log.DebugLevel)
+	logg.SetReportCaller(true)
+	logg.SetFormatter(&log.TextFormatter{
+		DisableColors: true,
+		FullTimestamp: true,
+	})
+	logger = logg.WithField("module", "node")
+
+	// logger.Logger.SetFormatter(&log.TextFormatter{
+	// 	DisableColors: true,
+	// 	FullTimestamp: true,
+	// })
 }
 
 type ConsensusCfg struct {
@@ -81,7 +92,15 @@ func DefaultConfig() (*Configure, error) {
 		ConsensusCfg{
 			PriVateKey: priv,
 			Publickey:  pub,
-			Timeout:    10,
+			Verfiers: []struct {
+				Publickey  string `json:"publicKey" yaml:"publicKey"`
+				PriVateKey string `json:"privateKey" yaml:"privateKey"`
+			}{
+				{
+					Publickey: pub,
+				},
+			},
+			Timeout: 10,
 		},
 		TxCfg{
 			MaxTxNum: 10000,

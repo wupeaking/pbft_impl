@@ -22,9 +22,9 @@ func GenerateKeyPairs() (string, string, error) {
 		return "", "", err
 	}
 
-	return fmt.Sprintf("0x%x", pri.D),
-		fmt.Sprintf("0x%x%x", pri.PublicKey.X,
-			pri.PublicKey.Y),
+	return fmt.Sprintf("0x%x", pri.D.Bytes()),
+		fmt.Sprintf("0x%x%x", pri.PublicKey.X.Bytes(),
+			pri.PublicKey.Y.Bytes()),
 		nil
 }
 
@@ -76,7 +76,8 @@ func Sign(priv *ecdsa.PrivateKey, conetnt []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("0x%x%x", r, s), nil
+
+	return fmt.Sprintf("0x%x%x", r.Bytes(), s.Bytes()), nil
 }
 
 // VerifySign hash为16进制格式

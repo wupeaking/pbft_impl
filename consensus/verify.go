@@ -40,11 +40,11 @@ func (pbft *PBFT) VerfifyMsg(msg *model.PbftMessage) bool {
 }
 
 func (pbft *PBFT) verfifyMsgInfo(msgInfo *model.PbftMessageInfo) bool {
-	if pbft.isVaildVerifier(msgInfo.SignerId) {
+	if !pbft.isVaildVerifier(msgInfo.SignerId) {
 		return false
 	}
 
-	pubKey, err := cryptogo.LoadPublicKey(fmt.Sprintf("%0x", msgInfo.SignerId))
+	pubKey, err := cryptogo.LoadPublicKey(fmt.Sprintf("0x%x", msgInfo.SignerId))
 	if err != nil {
 		return false
 	}
@@ -56,15 +56,15 @@ func (pbft *PBFT) verfifyMsgInfo(msgInfo *model.PbftMessageInfo) bool {
 	}
 	content, _ := proto.Marshal(&info)
 	hash := sha256.New().Sum(content)
-	return cryptogo.VerifySign(pubKey, fmt.Sprintf("%0x", msgInfo.Sign), fmt.Sprintf("%0x", hash))
+	return cryptogo.VerifySign(pubKey, fmt.Sprintf("0x%x", msgInfo.Sign), fmt.Sprintf("0x%x", hash))
 }
 
 func (pbft *PBFT) verfifyBlock(blk *model.PbftBlock) bool {
-	if pbft.isVaildVerifier(blk.SignerId) {
+	if !pbft.isVaildVerifier(blk.SignerId) {
 		return false
 	}
 
-	pubKey, err := cryptogo.LoadPublicKey(fmt.Sprintf("%0x", blk.SignerId))
+	pubKey, err := cryptogo.LoadPublicKey(fmt.Sprintf("0x%x", blk.SignerId))
 	if err != nil {
 		return false
 	}
@@ -76,7 +76,7 @@ func (pbft *PBFT) verfifyBlock(blk *model.PbftBlock) bool {
 	}
 	content, _ := proto.Marshal(&b)
 	hash := sha256.New().Sum(content)
-	return cryptogo.VerifySign(pubKey, fmt.Sprintf("%0x", blk.Sign), fmt.Sprintf("%0x", hash))
+	return cryptogo.VerifySign(pubKey, fmt.Sprintf("0x%x", blk.Sign), fmt.Sprintf("0x%x", hash))
 }
 
 func (pbft *PBFT) SignMsg(msg *model.PbftMessage) (*model.PbftMessage, error) {
@@ -120,7 +120,7 @@ func (pbft *PBFT) SignMsg(msg *model.PbftMessage) (*model.PbftMessage, error) {
 }
 
 func (pbft *PBFT) signMsgInfo(msgInfo *model.PbftMessageInfo) (*model.PbftMessageInfo, error) {
-	privKey, err := cryptogo.LoadPrivateKey(fmt.Sprintf("%0x", pbft.ws.CurVerfier.PrivateKey))
+	privKey, err := cryptogo.LoadPrivateKey(fmt.Sprintf("0x%x", pbft.ws.CurVerfier.PrivateKey))
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (pbft *PBFT) signMsgInfo(msgInfo *model.PbftMessageInfo) (*model.PbftMessag
 }
 
 func (pbft *PBFT) signBlock(blk *model.PbftBlock) (*model.PbftBlock, error) {
-	privKey, err := cryptogo.LoadPrivateKey(fmt.Sprintf("%0x", pbft.ws.CurVerfier.PrivateKey))
+	privKey, err := cryptogo.LoadPrivateKey(fmt.Sprintf("0x%x", pbft.ws.CurVerfier.PrivateKey))
 	if err != nil {
 		return nil, err
 	}

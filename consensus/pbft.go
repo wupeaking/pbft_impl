@@ -19,11 +19,13 @@ type PBFT struct {
 	Msgs        *MsgQueue
 	timer       *time.Timer
 	switcher    network.SwitcherI
-	logger      *log.Logger
+	logger      *log.Entry
 	ws          *world_state.WroldState
 	stateMigSig chan model.States // 状态迁移信号
 	txPool      *transaction.TxPool
 	tiggerTimer *time.Timer
+	StopFlag    bool
+	sync.Mutex
 }
 
 type MsgQueue struct {
@@ -64,7 +66,7 @@ func (mq *MsgQueue) WaitMsg() <-chan struct{} {
 	return mq.comingFlag
 }
 
-func New(ws *world_state.WroldState, txPool *transaction.TxPool) (*PBFT, error) {
+func New(ws *world_state.WroldState, txPool *transaction.TxPool, switcher network.SwitcherI) (*PBFT, error) {
 	pbft := &PBFT{}
 	pbft.Msgs = NewMsgQueue()
 	pbft.sm = NewStateMachine()
@@ -74,9 +76,15 @@ func New(ws *world_state.WroldState, txPool *transaction.TxPool) (*PBFT, error) 
 	pbft.tiggerTimer = time.NewTimer(300 * time.Millisecond)
 	pbft.tiggerTimer.Stop()
 
-	pbft.logger = log.New()
-	pbft.logger.SetLevel(log.DebugLevel)
-	pbft.logger.WithField("module", "consensus")
+	l := log.New()
+	l.SetReportCaller(true)
+	l.SetFormatter(&log.TextFormatter{
+		DisableColors: true,
+		FullTimestamp: true,
+	})
+	l.SetLevel(log.DebugLevel)
+	pbft.logger = l.WithField("module", "node")
+
 	pbft.ws = ws
 	pbft.verifiers = make(map[string]*model.Verifier)
 	for _, v := range ws.Verifiers {
@@ -85,13 +93,15 @@ func New(ws *world_state.WroldState, txPool *transaction.TxPool) (*PBFT, error) 
 	pbft.stateMigSig = make(chan model.States, 1)
 	pbft.txPool = txPool
 
+	pbft.switcher = switcher
+
 	return pbft, nil
 }
 
 func (pbft *PBFT) Daemon() {
 	// 启动超时定时器
 	pbft.timer.Reset(10 * time.Second)
-	pbft.timer.Reset(300 * time.Millisecond)
+	pbft.tiggerTimer.Reset(1000 * time.Millisecond)
 	go pbft.tiggerStateMigrateLoop()
 	go pbft.garbageCollection()
 
@@ -106,6 +116,7 @@ func (pbft *PBFT) Daemon() {
 
 		case <-pbft.timer.C:
 			// 有超时 则进入viewchang状态 发起viewchange消息
+			pbft.logger.Debugf("超时 进入ViewChanging状态")
 			pbft.sm.ChangeState(model.States_ViewChanging)
 			newMsg := model.PbftViewChange{
 				Info: &model.PbftMessageInfo{MsgType: model.MessageType_ViewChange,
@@ -114,7 +125,7 @@ func (pbft *PBFT) Daemon() {
 					Sign:     nil,
 				},
 			}
-			signedMsg, err := pbft.SignMsg(model.NewPbftMessage(newMsg))
+			signedMsg, err := pbft.SignMsg(model.NewPbftMessage(&newMsg))
 			if err != nil {
 				pbft.logger.Errorf("在viewchanging状态 进行消息签名时 发生了错误, err: %v", err)
 				return
@@ -151,10 +162,15 @@ func (pbft *PBFT) garbageCollection() {
 		case <-time.After(10 * time.Second):
 			for key := range pbft.sm.logMsg {
 				// 保留个阈值
-				if key < pbft.ws.BlockNum-10 {
+				if key+10 < pbft.ws.BlockNum {
+					pbft.logger.Debugf("删除key: %v", key)
 					delete(pbft.sm.logMsg, key)
 				}
 			}
 		}
 	}
+}
+
+func (pbft *PBFT) CurrentState() model.States {
+	return pbft.sm.state
 }

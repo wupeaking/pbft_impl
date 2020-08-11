@@ -83,7 +83,7 @@ message PbftMessage {
 message verifier {
     bytes publick_key = 1;
     bytes private_key = 2;
-    bytes seq_num = 3;
+    int32 seq_num = 3;
 }
 
 message genesis {

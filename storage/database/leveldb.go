@@ -15,6 +15,9 @@ func NewLevelDB(path string) (DB, error) {
 
 func (ldb *LevelDB) Get(key string) (string, error) {
 	v, err := ldb.DB.Get([]byte(key), nil)
+	if err == leveldb.ErrNotFound {
+		return "", nil
+	}
 	return string(v), err
 }
 
