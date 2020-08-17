@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
@@ -71,13 +72,74 @@ func (pbft *PBFT) verfifyBlock(blk *model.PbftBlock) bool {
 	}
 
 	b := model.PbftBlock{
-		BlockId:  blk.BlockId,
-		BlockNum: blk.BlockNum,
-		Content:  blk.Content,
+		PrevBlock: blk.PrevBlock,
+		BlockNum:  blk.BlockNum,
+		Content:   blk.Content,
+		TimeStamp: blk.TimeStamp,
+		BlockId:   "",
 	}
+
 	content, _ := proto.Marshal(&b)
 	hash := sha256.New().Sum(content)
+	if b.BlockId != hex.EncodeToString(hash) {
+		return false
+	}
 	return cryptogo.VerifySign(pubKey, fmt.Sprintf("0x%x", blk.Sign), fmt.Sprintf("0x%x", hash))
+}
+
+// VerfifyMostBlock 验证有超过2/3的节点已对区块进行了签名
+func (pbft *PBFT) VerfifyMostBlock(blk *model.PbftBlock) bool {
+	if !pbft.isVaildVerifier(blk.SignerId) {
+		return false
+	}
+
+	b := model.PbftBlock{
+		PrevBlock: blk.PrevBlock,
+		BlockNum:  blk.BlockNum,
+		Content:   blk.Content,
+		TimeStamp: blk.TimeStamp,
+		BlockId:   "",
+	}
+
+	content, _ := proto.Marshal(&b)
+	hash := sha256.New().Sum(content)
+	if b.BlockId != hex.EncodeToString(hash) {
+		return false
+	}
+	pubKey, err := cryptogo.LoadPublicKey(fmt.Sprintf("0x%x", blk.SignerId))
+	if err != nil {
+		return false
+	}
+	if !cryptogo.VerifySign(pubKey, fmt.Sprintf("0x%x", blk.Sign), fmt.Sprintf("0x%x", hash)) {
+		return false
+	}
+
+	f := len(pbft.ws.Verifiers) / 3
+	var minNodes int
+	if f == 0 {
+		minNodes = len(pbft.ws.Verifiers)
+	} else {
+		minNodes = 2*f + 1
+	}
+
+	cnt := 0
+	for _, pair := range blk.SignPairs {
+		if !pbft.isVaildVerifier(pair.SignerId) {
+			continue
+		}
+
+		pubKey, err := cryptogo.LoadPublicKey(fmt.Sprintf("0x%x", pair.SignerId))
+		if err != nil {
+			return false
+		}
+		if cryptogo.VerifySign(pubKey, fmt.Sprintf("0x%x", pair.Sign), fmt.Sprintf("0x%x", hash)) {
+			cnt++
+		}
+	}
+	if cnt+1 >= minNodes {
+		return true
+	}
+	return false
 }
 
 func (pbft *PBFT) SignMsg(msg *model.PbftMessage) (*model.PbftMessage, error) {
@@ -150,10 +212,11 @@ func (pbft *PBFT) signBlock(blk *model.PbftBlock) (*model.PbftBlock, error) {
 		return nil, err
 	}
 	b := model.PbftBlock{
-		BlockId:   blk.BlockId,
+		PrevBlock: blk.PrevBlock,
 		BlockNum:  blk.BlockNum,
 		Content:   blk.Content,
 		TimeStamp: blk.TimeStamp,
+		BlockId:   "",
 	}
 	content, _ := proto.Marshal(&b)
 	hash := sha256.New().Sum(content)
@@ -165,6 +228,7 @@ func (pbft *PBFT) signBlock(blk *model.PbftBlock) (*model.PbftBlock, error) {
 	if err != nil {
 		return nil, err
 	}
+	blk.BlockId = hex.EncodeToString(hash)
 
 	if pbft.IsPrimaryVerfier() {
 		blk.Sign = s

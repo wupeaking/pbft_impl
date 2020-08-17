@@ -36,21 +36,22 @@ message SignPairs {
 }
 
 message PbftBlock {
+    string prev_block = 1;
     // 区块链的hash值 
-    bytes block_id = 1;
+    string block_id = 2;
     // 主验证者公钥
-    bytes signer_id = 2;
+    bytes signer_id = 3;
 
     // 以UTC时间为准
-    uint64 time_stamp = 7;
+    uint64 time_stamp = 4;
 
-    uint64 block_num = 3;
+    uint64 block_num = 5;
     // 区块完整内容
-    bytes content = 4;
+    bytes content = 6;
     // 内容签名
-    bytes sign = 5;
+    bytes sign = 7;
 
-    repeated SignPairs sign_pairs = 6;
+    repeated SignPairs sign_pairs = 8;
 }
 
 

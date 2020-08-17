@@ -3,6 +3,7 @@ package consensus
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/wupeaking/pbft_impl/model"
 )
@@ -11,8 +12,10 @@ func (pbft *PBFT) packageBlock() (*model.PbftBlock, error) {
 	// 尝试打包一个新区块
 	// 当前
 	blk := &model.PbftBlock{
-		BlockId:  []byte(pbft.ws.BlockID),
-		SignerId: pbft.ws.CurVerfier.PublickKey,
+		PrevBlock: pbft.ws.BlockID,
+		SignerId:  pbft.ws.CurVerfier.PublickKey,
+		BlockNum:  pbft.ws.BlockNum + 1,
+		TimeStamp: uint64(time.Now().Unix()),
 	}
 	txs := make([]*model.Tx, 0)
 	max := 3000
