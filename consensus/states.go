@@ -94,11 +94,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		}
 
 		// 根据当前状态 判断是否是 primary Verifier
-		primary := (pbft.ws.BlockNum + 1 + pbft.ws.View) % uint64(len(pbft.ws.Verifiers))
-		if len(pbft.ws.Verifiers) == 1 {
-			primary = 0
-		}
-		if int(primary) == pbft.ws.VerifierNo {
+		if pbft.IsPrimaryVerfier() {
 			pbft.logger.Debugf("当前状态为 %s, 提议的新区块为: %d, 视图编号为: %d, 当前节点为主验证节点 ",
 				model.States_name[int32(curState)], pbft.ws.BlockNum+1, pbft.ws.View)
 
@@ -340,12 +336,9 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		if content.Block.BlockNum != pbft.ws.BlockNum+1 {
 			return
 		}
-		primary := (pbft.ws.BlockNum + 1 + content.Info.View) % uint64(len(pbft.ws.Verifiers))
-		if len(pbft.ws.Verifiers) == 1 {
-			primary = 0
-		}
+
 		// 验证是否是主节点发送的
-		if bytes.Compare(content.Block.SignerId, pbft.ws.Verifiers[primary].PublickKey) != 0 {
+		if !pbft.IsPrimaryVerfier() {
 			return
 		}
 		pbft.sm.receivedBlock = content.Block
@@ -524,16 +517,12 @@ func (pbft *PBFT) tiggerMigrateProcess(s model.States) {
 		// 暂时啥也不做
 	case model.States_PrePreparing:
 		logMsg := pbft.sm.logMsg[pbft.ws.BlockNum+1]
-		primary := (pbft.ws.BlockNum + 1 + pbft.ws.View) % uint64(len(pbft.ws.Verifiers))
-		if len(pbft.ws.Verifiers) == 1 {
-			primary = 0
-		}
 		for i := range logMsg {
 			if logMsg[i].MessageType != model.MessageType_PrePrepare {
 				continue
 			}
 			// 验证是否是主节点发送的
-			if bytes.Compare(logMsg[i].msg.GetGeneric().Info.SignerId, pbft.ws.Verifiers[primary].PublickKey) != 0 {
+			if !pbft.IsPrimaryVerfier() {
 				continue
 			}
 			if logMsg[i].view != pbft.ws.View {
@@ -576,12 +565,8 @@ func (pbft *PBFT) tiggerMigrateProcess(s model.States) {
 		logMsg := pbft.sm.logMsg[pbft.ws.BlockNum+1]
 		for i := range logMsg {
 			if logMsg[i].block != nil && logMsg[i].block.BlockNum == pbft.ws.BlockNum+1 {
-				primary := (pbft.ws.BlockNum + 1 + pbft.ws.View) % uint64(len(pbft.ws.Verifiers))
-				if len(pbft.ws.Verifiers) == 1 {
-					primary = 0
-				}
 				// 验证是否是主节点发送的
-				if bytes.Compare(logMsg[i].block.SignerId, pbft.ws.Verifiers[primary].PublickKey) != 0 {
+				if !pbft.IsPrimaryVerfier() {
 					continue
 				}
 				pbft.sm.ChangeState(model.States_Committing)

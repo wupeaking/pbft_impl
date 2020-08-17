@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 
@@ -149,9 +150,10 @@ func (pbft *PBFT) signBlock(blk *model.PbftBlock) (*model.PbftBlock, error) {
 		return nil, err
 	}
 	b := model.PbftBlock{
-		BlockId:  blk.BlockId,
-		BlockNum: blk.BlockNum,
-		Content:  blk.Content,
+		BlockId:   blk.BlockId,
+		BlockNum:  blk.BlockNum,
+		Content:   blk.Content,
+		TimeStamp: blk.TimeStamp,
 	}
 	content, _ := proto.Marshal(&b)
 	hash := sha256.New().Sum(content)
@@ -163,7 +165,16 @@ func (pbft *PBFT) signBlock(blk *model.PbftBlock) (*model.PbftBlock, error) {
 	if err != nil {
 		return nil, err
 	}
-	blk.Sign = s
+
+	if pbft.IsPrimaryVerfier() {
+		blk.Sign = s
+	} else {
+		blk.SignPairs = append(blk.SignPairs, &model.SignPairs{
+			SignerId: pbft.ws.CurVerfier.PublickKey,
+			Sign:     s,
+		})
+	}
+
 	return blk, nil
 }
 
@@ -192,4 +203,12 @@ func (pbft *PBFT) isValidMsg(msg *model.PbftMessage) bool {
 		return true
 	}
 	return false
+}
+
+func (pbft *PBFT) IsPrimaryVerfier() bool {
+	primary := (pbft.ws.BlockNum + 1 + pbft.ws.View) % uint64(len(pbft.ws.Verifiers))
+	if len(pbft.ws.Verifiers) == 1 {
+		primary = 0
+	}
+	return bytes.Compare(pbft.ws.Verifiers[primary].PublickKey, pbft.ws.CurVerfier.PublickKey) == 0
 }

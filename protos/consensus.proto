@@ -28,18 +28,32 @@ enum States {
     Checkpointing = 7;
 }
 
+message SignPairs {
+    // 签名公钥
+    bytes signer_id = 1;
+    // 签名内容
+    bytes sign  = 2;
+}
+
 message PbftBlock {
     // 区块链的hash值 
     bytes block_id = 1;
-    // 签名者公钥
+    // 主验证者公钥
     bytes signer_id = 2;
+
+    // 以UTC时间为准
+    uint64 time_stamp = 7;
 
     uint64 block_num = 3;
     // 区块完整内容
     bytes content = 4;
     // 内容签名
     bytes sign = 5;
+
+    repeated SignPairs sign_pairs = 6;
 }
+
+
 
 message PbftMessageInfo {
     // Type of the message
