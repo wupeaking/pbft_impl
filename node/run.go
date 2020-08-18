@@ -143,10 +143,11 @@ func (node *PBFTNode) Run() {
 	// 启动共识
 	go node.consensusEngine.Daemon()
 
+	curBlock := 0
 	go func() {
 		for {
 			time.Sleep(1000 * time.Millisecond)
-			if node.consensusEngine.StopFlag == false && node.consensusEngine.CurrentState() == model.States_NotStartd {
+			if node.consensusEngine.StopFlag == false && node.consensusEngine.CurrentState() == model.States_NotStartd && node.ws.BlockNum >= uint64(curBlock) {
 				newMsg := model.PbftGenericMessage{
 					Info: &model.PbftMessageInfo{MsgType: model.MessageType_NewBlockProposal,
 						View: node.ws.View, SeqNum: node.ws.BlockNum + 1,

@@ -100,9 +100,9 @@ func New(ws *world_state.WroldState, txPool *transaction.TxPool, switcher networ
 
 func (pbft *PBFT) Daemon() {
 	// 启动超时定时器
-	pbft.timer.Reset(10 * time.Second)
-	pbft.tiggerTimer.Reset(1000 * time.Millisecond)
-	go pbft.tiggerStateMigrateLoop()
+	//pbft.timer.Reset(10 * time.Second)
+	// pbft.tiggerTimer.Reset(1000 * time.Millisecond)
+	// go pbft.tiggerStateMigrateLoop()
 	go pbft.garbageCollection()
 
 	for {
@@ -111,7 +111,10 @@ func (pbft *PBFT) Daemon() {
 			// 有消息进入
 			pbft.StateMigrate(pbft.Msgs.GetMsg())
 
-		case s := <-pbft.stateMigSig:
+		// case s := <-pbft.stateMigSig:
+		// 	pbft.tiggerMigrateProcess(s)
+
+		case s := <-pbft.sm.changeSig:
 			pbft.tiggerMigrateProcess(s)
 
 		case <-pbft.timer.C:

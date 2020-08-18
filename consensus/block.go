@@ -30,7 +30,10 @@ func (pbft *PBFT) packageBlock() (*model.PbftBlock, error) {
 		}
 		txs = append(txs, t)
 	}
-	body, _ := json.Marshal(txs)
+	body, err := json.Marshal(txs)
+	if err != nil {
+		return nil, err
+	}
 	blk.Content = body
 	return pbft.signBlock(blk)
 }
@@ -41,10 +44,11 @@ func (pbft *PBFT) CommitBlock(block *model.PbftBlock) error {
 		return fmt.Errorf("apply block 失败 区块编号不连续 当前最高区块为: %d", pbft.ws.BlockNum)
 	}
 	pbft.ws.IncreaseBlockNum()
-	pbft.ws.SetValue(0, pbft.ws.BlockID, string(block.BlockId), nil)
+	pbft.ws.SetValue(block.BlockNum, pbft.ws.BlockID, string(block.BlockId), nil)
 	pbft.ws.InsertBlock(block)
 	pbft.ws.UpdateLastWorldState()
 	pbft.logger.Infof("提交一个新区块")
+	pbft.sm.receivedBlock = nil
 	return nil
 }
 
@@ -53,7 +57,6 @@ func (pbft *PBFT) ApplyBlock(block *model.PbftBlock) error {
 	// todo::
 	// 执行区块交易 更新状态信息
 	pbft.ws.SetBlockNum(block.BlockNum)
-	pbft.ws.SetView(0)
 	return nil
 }
 

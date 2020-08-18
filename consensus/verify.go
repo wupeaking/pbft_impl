@@ -57,7 +57,9 @@ func (pbft *PBFT) verfifyMsgInfo(msgInfo *model.PbftMessageInfo) bool {
 		SeqNum:  msgInfo.SeqNum,
 	}
 	content, _ := proto.Marshal(&info)
-	hash := sha256.New().Sum(content)
+	sh := sha256.New()
+	sh.Write(content)
+	hash := sh.Sum(nil)
 	return cryptogo.VerifySign(pubKey, fmt.Sprintf("0x%x", msgInfo.Sign), fmt.Sprintf("0x%x", hash))
 }
 
@@ -80,7 +82,9 @@ func (pbft *PBFT) verfifyBlock(blk *model.PbftBlock) bool {
 	}
 
 	content, _ := proto.Marshal(&b)
-	hash := sha256.New().Sum(content)
+	sh := sha256.New()
+	sh.Write(content)
+	hash := sh.Sum(nil)
 	if b.BlockId != hex.EncodeToString(hash) {
 		return false
 	}
@@ -102,7 +106,9 @@ func (pbft *PBFT) VerfifyMostBlock(blk *model.PbftBlock) bool {
 	}
 
 	content, _ := proto.Marshal(&b)
-	hash := sha256.New().Sum(content)
+	sh := sha256.New()
+	sh.Write(content)
+	hash := sh.Sum(nil)
 	if b.BlockId != hex.EncodeToString(hash) {
 		return false
 	}
@@ -193,7 +199,9 @@ func (pbft *PBFT) signMsgInfo(msgInfo *model.PbftMessageInfo) (*model.PbftMessag
 		SeqNum:  msgInfo.SeqNum,
 	}
 	content, _ := proto.Marshal(&info)
-	hash := sha256.New().Sum(content)
+	sh := sha256.New()
+	sh.Write(content)
+	hash := sh.Sum(nil)
 	sign, err := cryptogo.Sign(privKey, hash)
 	if err != nil {
 		return nil, err
@@ -219,7 +227,9 @@ func (pbft *PBFT) signBlock(blk *model.PbftBlock) (*model.PbftBlock, error) {
 		BlockId:   "",
 	}
 	content, _ := proto.Marshal(&b)
-	hash := sha256.New().Sum(content)
+	sh := sha256.New()
+	sh.Write(content)
+	hash := sh.Sum(nil)
 	sign, err := cryptogo.Sign(privKey, hash)
 	if err != nil {
 		return nil, err

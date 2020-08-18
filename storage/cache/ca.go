@@ -44,7 +44,10 @@ func (dbc *DBCache) Insert(value interface{}) error {
 	case *model.PbftBlock:
 		dbc.blocks[string(x.BlockId)] = x
 		dbc.blocknumId[x.BlockNum] = string(x.BlockId)
-		v, _ := proto.Marshal(x)
+		v, err := proto.Marshal(x)
+		if err != nil {
+			return err
+		}
 		if err := dbc.blockDB.Set(string(x.BlockId), string(v)); err != nil {
 			return err
 		}

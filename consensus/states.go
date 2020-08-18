@@ -15,6 +15,7 @@ type StateMachine struct {
 	logMsg map[uint64][]LogMessage
 	// Receive
 	receivedBlock *model.PbftBlock
+	changeSig     chan model.States
 }
 
 type LogMessage struct {
@@ -55,6 +56,10 @@ func (sm *StateMachine) ChangeState(s model.States) {
 	sm.Lock()
 	sm.state = s
 	sm.Unlock()
+	select {
+	case sm.changeSig <- s:
+	default:
+	}
 }
 
 func (sm *StateMachine) CurrentState() model.States {
@@ -63,8 +68,9 @@ func (sm *StateMachine) CurrentState() model.States {
 
 func NewStateMachine() *StateMachine {
 	return &StateMachine{
-		state:  model.States_NotStartd,
-		logMsg: make(map[uint64][]LogMessage),
+		state:     model.States_NotStartd,
+		logMsg:    make(map[uint64][]LogMessage),
+		changeSig: make(chan model.States, 1),
 	}
 }
 
@@ -121,6 +127,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 					model.States_name[int32(curState)], err)
 				return
 			}
+			pbft.sm.receivedBlock = blk
 			pbft.appendLogMsg(signedMsg)
 			// 广播消息
 			pbft.switcher.Broadcast(signedMsg)
@@ -159,9 +166,9 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 				content.Info.SeqNum, pbft.ws.BlockNum+1)
 			return
 		}
-		if content.Info.View < pbft.ws.View {
+		if content.Info.View != pbft.ws.View {
 			// pbft.appendLogMsg(msg)
-			pbft.logger.Warnf("当前节点处于PrePreparing 收到pre-prepare消息 但是视图编号小于本地视图编号, 收到的视图序号为: %d, 本地视图序号为: %d",
+			pbft.logger.Warnf("当前节点处于PrePreparing 收到pre-prepare消息 但是视图编号不等于本地视图编号, 收到的视图序号为: %d, 本地视图序号为: %d",
 				content.Info.View, pbft.ws.View)
 			return
 		}
@@ -175,6 +182,14 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 			pbft.logger.Warnf("当前节点处于PrePreparing 收到pre-prepare消息 计算的主节点的公钥不一致, 主节点标号为: %d",
 				primary)
 		}
+		// 判断接收到的区块是否已经2/3确认
+		var blk *model.PbftBlock
+		if content.Block != nil && pbft.VerfifyMostBlock(content.Block) {
+			pbft.sm.receivedBlock = content.Block
+			blk = content.Block
+		} else {
+			blk, _ = pbft.signBlock(content.Block)
+		}
 
 		// 执行到此处 说明收到了正确的由主节点发送的pre-prepare消息
 		// 广播prepare消息 切换到preparing状态  重置超时 等待接收足够多的prepare消息
@@ -185,6 +200,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 				SignerId: pbft.ws.CurVerfier.PublickKey,
 				Sign:     nil, // todo:: 需要签名
 			},
+			Block: blk,
 		}
 
 		// 签名
@@ -230,23 +246,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 				content.Info.View, pbft.ws.View)
 			return
 		}
-		// isVerifier := false
-		// for i := range pbft.ws.Verifiers {
-		// 	if bytes.Compare(content.Info.SignerId, pbft.ws.Verifiers[i].PublickKey) == 0 {
-		// 		isVerifier = true
-		// 		break
-		// 	}
-		// }
-		// if !isVerifier {
-		// 	pbft.logger.Warnf("当前节点处于Preparing 收到prepare消息 但是此验证者公钥不在验证列表中, 公钥内容: %s",
-		// 		string(content.Info.SignerId))
-		// 	return
-		// }
 
-		// 加入到prepare列表 当满足大于 2f+1时 进入checking状态
-		// for _, m := range content.OtherInfos {
-		// 	pbft.appendLogMsg(model.NewPbftMessage(&model.PbftGenericMessage{Info: m}))
-		// }
 		// 计算fault 数量
 		f := len(pbft.ws.Verifiers) / 3
 		var minNodes int
@@ -288,7 +288,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 				pbft.timer.Reset(10 * time.Second)
 				// 触发信号 迁移到checking状态
 				// 为啥需要手动触发 是由于 可能这个消息已经被收到了 到这一直不会收到消息转移到checking状态
-				pbft.tiggerMigrate(model.States_Checking)
+				// pbft.tiggerMigrate(model.States_Checking)
 				return
 			}
 		}
@@ -316,54 +316,45 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		pbft.switcher.Broadcast(model.NewPbftMessage(&newMsg))
 
 	case model.States_Checking:
-		// // 先看看本地是否已经有有效的区块包
-		// logMsg := pbft.sm.logMsg[pbft.ws.BlockNum+1]
-		// for i := range logMsg {
-		// 	if logMsg[i].block != nil && logMsg[i].block.BlockNum == pbft.ws.BlockNum+1 {
-		// 		return
-		// 	}
-		// }
-		// 说明节点已经收到了足够多的prepare消息 等待收到 完整的区块包
 		content := msg.GetGeneric()
-		if content == nil {
+		if content == nil && pbft.sm.receivedBlock == nil {
 			pbft.logger.Warnf("当前状态为%s 但是收到的消息类型为ViewChange", model.States_name[int32(curState)])
 			return
 		}
 		// 检查消息体中是否有有效的区块
-		if content.Block == nil {
-			return
-		}
-		if content.Block.BlockNum != pbft.ws.BlockNum+1 {
+		if content.Block == nil && pbft.sm.receivedBlock == nil {
 			return
 		}
 
-		// 验证是否是主节点发送的
-		if !pbft.IsPrimaryVerfier() {
-			return
+		if pbft.sm.receivedBlock == nil && pbft.VerfifyMostBlock(content.Block) {
+			pbft.sm.receivedBlock = content.Block
 		}
-		pbft.sm.receivedBlock = content.Block
-		// 说明已经收到提交的区块 并且验证通过
-		// 广播Commit消息
-		newMsg := &model.PbftGenericMessage{
-			Info: &model.PbftMessageInfo{MsgType: model.MessageType_Commit,
-				View: pbft.ws.View, SeqNum: pbft.ws.BlockNum + 1,
-				SignerId: pbft.ws.CurVerfier.PublickKey,
-				Sign:     nil,
-			},
-			Block: content.Block,
-		}
-		signedInfo, err := pbft.signMsgInfo(newMsg.Info)
-		if err != nil {
-			pbft.logger.Debugf("当前状态为 %s, 发起commit消息时 在签名过程中发生错误 err: %v ",
-				model.States_name[int32(curState)], err)
-			return
-		}
-		newMsg.Info = signedInfo
 
-		pbft.appendLogMsg(model.NewPbftMessage(newMsg))
-		pbft.switcher.Broadcast(model.NewPbftMessage(newMsg))
-		pbft.sm.ChangeState(model.States_Committing)
-		pbft.timer.Reset(10 * time.Second)
+		if pbft.sm.receivedBlock != nil {
+			// 说明已经收到提交的区块 并且验证通过
+			// 广播Commit消息
+			newMsg := &model.PbftGenericMessage{
+				Info: &model.PbftMessageInfo{MsgType: model.MessageType_Commit,
+					View: pbft.ws.View, SeqNum: pbft.ws.BlockNum + 1,
+					SignerId: pbft.ws.CurVerfier.PublickKey,
+					Sign:     nil,
+				},
+				// Block: pbft.sm.receivedBlock,
+			}
+			signedInfo, err := pbft.signMsgInfo(newMsg.Info)
+			if err != nil {
+				pbft.logger.Debugf("当前状态为 %s, 发起commit消息时 在签名过程中发生错误 err: %v ",
+					model.States_name[int32(curState)], err)
+				return
+			}
+			newMsg.Info = signedInfo
+
+			pbft.appendLogMsg(model.NewPbftMessage(newMsg))
+			pbft.switcher.Broadcast(model.NewPbftMessage(newMsg))
+			pbft.sm.ChangeState(model.States_Committing)
+			pbft.timer.Reset(10 * time.Second)
+			return
+		}
 
 	case model.States_Committing:
 		content := msg.GetGeneric()
@@ -418,7 +409,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 				pbft.timer.Reset(10 * time.Second)
 				// 触发信号 迁移到checking状态
 				// 为啥需要手动触发 是由于 可能这个消息已经被收到了 到这一直不会收到消息转移到checking状态
-				pbft.tiggerMigrate(model.States_Finished)
+				//pbft.tiggerMigrate(model.States_Finished)
 				return
 			}
 		}
@@ -509,7 +500,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 func (pbft *PBFT) tiggerMigrateProcess(s model.States) {
 	//pbft.logger.Debugf("进入触发迁移处理函数, 当前状态: %v", pbft.sm.state)
 	//pbft.tiggerTimer.Stop()
-	defer func() { pbft.tiggerTimer.Reset(1000 * time.Millisecond) }()
+	// defer func() { pbft.tiggerTimer.Reset(1000 * time.Millisecond) }()
 
 	curState := pbft.sm.CurrentState()
 	switch curState {
