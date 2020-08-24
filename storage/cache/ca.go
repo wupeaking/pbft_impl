@@ -2,6 +2,7 @@ package cache
 
 import (
 	"fmt"
+	"path"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/wupeaking/pbft_impl/model"
@@ -21,13 +22,13 @@ type DBCache struct {
 	metaDB database.DB
 }
 
-func New(path string) *DBCache {
+func New(filepath string) *DBCache {
 
-	blockDB, err := database.NewLevelDB(path + "./pbft/block.db")
+	blockDB, err := database.NewLevelDB(path.Join(filepath, "./pbft/block.db"))
 	if err != nil {
 		panic(err)
 	}
-	metaDB, err := database.NewLevelDB(path + "./pbft/meta.db")
+	metaDB, err := database.NewLevelDB(path.Join(filepath, "./pbft/meta.db"))
 	if err != nil {
 		panic(err)
 	}

@@ -56,7 +56,8 @@ func (pbft *PBFT) CommitBlock(block *model.PbftBlock) error {
 func (pbft *PBFT) ApplyBlock(block *model.PbftBlock) error {
 	// todo::
 	// 执行区块交易 更新状态信息
-	pbft.ws.SetBlockNum(block.BlockNum)
+	//pbft.ws.SetBlockNum(block.BlockNum)
+	pbft.ws.SetValue(block.BlockNum, pbft.ws.BlockID, string(block.BlockId), nil)
 	return nil
 }
 

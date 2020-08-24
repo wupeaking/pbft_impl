@@ -21,7 +21,12 @@ func (ws *WroldState) UpdateLastWorldState() error {
 }
 
 func (ws *WroldState) GetBlockMeta() (*model.BlockMeta, error) {
-	return ws.db.GetBlockMeta()
+	meta, err := ws.db.GetBlockMeta()
+	if err != nil {
+		return meta, err
+	}
+	ws.View = meta.LastView
+	return meta, err
 }
 
 func (ws *WroldState) GetBlock(key interface{}) (*model.PbftBlock, error) {

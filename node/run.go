@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/wupeaking/pbft_impl/consensus"
+	cryptogo "github.com/wupeaking/pbft_impl/crypto"
 	"github.com/wupeaking/pbft_impl/model"
 	"github.com/wupeaking/pbft_impl/network"
 	"github.com/wupeaking/pbft_impl/network/http_network"
@@ -81,8 +82,8 @@ func New() *PBFTNode {
 		isVerfier := false
 		for i := range ws.Verifiers {
 			if fmt.Sprintf("0x%x", ws.Verifiers[i].PublickKey) == strings.ToLower(cfg.Publickey) {
-				pub, _ := hex.DecodeString(cfg.Publickey)
-				pri, _ := hex.DecodeString(cfg.PriVateKey)
+				pub, _ := cryptogo.Hex2Bytes(cfg.Publickey)
+				pri, _ := cryptogo.Hex2Bytes(cfg.PriVateKey)
 				ws.CurVerfier = &model.Verifier{PublickKey: pub, PrivateKey: pri, SeqNum: int32(i)}
 				ws.VerifierNo = i
 				isVerfier = true
