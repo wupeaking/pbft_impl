@@ -15,4 +15,33 @@ message BlockMeta {
     uint64 last_view = 5;
 }
 
+enum BlockRequestType {
+    default_type = 0;
+    only_header = 1;
+    whole_content = 2;
+}
+
+message BlockRequest {
+    int64 block_num = 1;
+    BlockRequestType request_type = 2;
+}
+
+message BlockResponse{
+    BlockRequestType request_type = 2;
+    PbftBlock block = 3;
+}
+
+enum BroadcastMsgType {
+    unknown_msg = 0;
+    // 共识相关
+    send_pbft_msg = 1;
+    send_block_meta = 2;
+    // tx
+    send_tx = 10;
+
+    // blockchain
+    request_load_block = 20;
+}
+
+
 // protoc --go_out=./   -I . block_meta.proto

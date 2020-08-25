@@ -41,7 +41,7 @@ func New() *PBFTNode {
 		cfg, _ = DefaultConfig()
 	}
 
-	switcher := http_network.New(cfg.NodeAddrs, cfg.LocalAddr)
+	switcher := http_network.New(cfg.NodeAddrs, cfg.LocalAddr, cfg.NetworkCfg.Publickey)
 	txPool := transaction.NewTxPool()
 
 	var consen *consensus.PBFT
@@ -49,11 +49,11 @@ func New() *PBFTNode {
 	if genesis == nil {
 		// 生成创世区块
 		var pub, pri []byte
-		if strings.HasPrefix(cfg.Publickey, "0x") || strings.HasPrefix(cfg.Publickey, "0x") {
-			pub, _ = hex.DecodeString(cfg.Publickey[2:])
+		if strings.HasPrefix(cfg.ConsensusCfg.Publickey, "0x") || strings.HasPrefix(cfg.ConsensusCfg.Publickey, "0x") {
+			pub, _ = hex.DecodeString(cfg.ConsensusCfg.Publickey[2:])
 		}
-		if strings.HasPrefix(cfg.PriVateKey, "0x") || strings.HasPrefix(cfg.PriVateKey, "0x") {
-			pri, _ = hex.DecodeString(cfg.PriVateKey[2:])
+		if strings.HasPrefix(cfg.ConsensusCfg.PriVateKey, "0x") || strings.HasPrefix(cfg.ConsensusCfg.PriVateKey, "0x") {
+			pri, _ = hex.DecodeString(cfg.ConsensusCfg.PriVateKey[2:])
 		}
 		zeroBlock := model.Genesis{
 			Verifiers: []*model.Verifier{
@@ -81,9 +81,9 @@ func New() *PBFTNode {
 		ws.Verifiers = genesis.Verifiers
 		isVerfier := false
 		for i := range ws.Verifiers {
-			if fmt.Sprintf("0x%x", ws.Verifiers[i].PublickKey) == strings.ToLower(cfg.Publickey) {
-				pub, _ := cryptogo.Hex2Bytes(cfg.Publickey)
-				pri, _ := cryptogo.Hex2Bytes(cfg.PriVateKey)
+			if fmt.Sprintf("0x%x", ws.Verifiers[i].PublickKey) == strings.ToLower(cfg.ConsensusCfg.Publickey) {
+				pub, _ := cryptogo.Hex2Bytes(cfg.ConsensusCfg.Publickey)
+				pri, _ := cryptogo.Hex2Bytes(cfg.ConsensusCfg.PriVateKey)
 				ws.CurVerfier = &model.Verifier{PublickKey: pub, PrivateKey: pri, SeqNum: int32(i)}
 				ws.VerifierNo = i
 				isVerfier = true
@@ -167,21 +167,25 @@ func (node *PBFTNode) Run() {
 		}
 	}()
 
-	for msg := range node.switcher.Recv() {
-		switch x := msg.(type) {
-		case *model.BlockMeta:
-			// 校验BlockMeta
-			// 判断当前节点是否是处于最高区块
-			if x.BlockHeight > node.ws.BlockNum {
-				// 停止共识
-				// 再次走到判断是否是最高区块高度流程
-				break
-			} else {
+	node.switcher.Start()
 
-			}
-		case *model.PbftMessage:
-			node.consensusEngine.Msgs.InsertMsg(x)
-		}
-	}
+	select {}
+
+	// for msg := range node.switcher.Recv() {
+	// 	switch x := msg.(type) {
+	// 	case *model.BlockMeta:
+	// 		// 校验BlockMeta
+	// 		// 判断当前节点是否是处于最高区块
+	// 		if x.BlockHeight > node.ws.BlockNum {
+	// 			// 停止共识
+	// 			// 再次走到判断是否是最高区块高度流程
+	// 			break
+	// 		} else {
+
+	// 		}
+	// 	case *model.PbftMessage:
+	// 		node.consensusEngine.Msgs.InsertMsg(x)
+	// 	}
+	// }
 
 }

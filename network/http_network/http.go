@@ -1,12 +1,11 @@
 package http_network
 
 import (
-	"io/ioutil"
+	"encoding/json"
 	"log"
 	"net/http"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/mux"
 	"github.com/parnurzeal/gorequest"
 	"github.com/wupeaking/pbft_impl/model"
@@ -16,22 +15,34 @@ import (
 type HTTPNetWork struct {
 	Addrs        []string // 所有的节点地址
 	LocalAddress string   // 本机地址
-	msgQueue     chan interface{}
+	NodeID       string   // 节点ID
+	msgQueue     chan *HTTPMsg
+	peerBooks    *network.PeerBooks
+	recvCB       map[string]network.OnReceive
 }
 
-func New(nodeAddrs []string, local string) network.SwitcherI {
+type HTTPMsg struct {
+	*network.BroadcastMsg
+	*network.Peer
+}
+
+func New(nodeAddrs []string, local string, nodeID string) network.SwitcherI {
 	return &HTTPNetWork{
 		Addrs:        nodeAddrs,
 		LocalAddress: local,
-		msgQueue:     make(chan interface{}, 1000),
+		NodeID:       nodeID,
+		msgQueue:     make(chan *HTTPMsg, 1000),
+		peerBooks:    network.NewPeerBooks(),
+		recvCB:       make(map[string]network.OnReceive),
 	}
 }
 
-func (hn *HTTPNetWork) Start() {
+func (hn *HTTPNetWork) Start() error {
 	r := mux.NewRouter()
-	r.HandleFunc("/pbft_message", hn.consensusHandler).Methods("POST")
-	r.HandleFunc("/block_meta", hn.blockMetaHandler).Methods("POST")
-	r.HandleFunc("/transaction", hn.txHandler).Methods("POST")
+	r.HandleFunc("/pbft_message", hn.commonHander).Methods("POST")
+	r.HandleFunc("/block_meta", hn.commonHander).Methods("POST")
+	r.HandleFunc("/transaction", hn.commonHander).Methods("POST")
+	r.HandleFunc("/block_header/{num}", hn.commonHander).Methods("GET")
 
 	srv := &http.Server{
 		Handler:      r,
@@ -40,92 +51,81 @@ func (hn *HTTPNetWork) Start() {
 		ReadTimeout:  15 * time.Second,
 	}
 	go log.Fatal(srv.ListenAndServe())
+
+	go hn.Recv()
+
+	return nil
 }
 
-func (hn *HTTPNetWork) Broadcast(msg interface{}) error {
-	switch x := msg.(type) {
-	case *model.PbftMessage:
-		body, err := proto.Marshal(x)
+func (hn *HTTPNetWork) Broadcast(modelID string, msg *network.BroadcastMsg) error {
+	switch msg.MsgType {
+	case model.BroadcastMsgType_send_pbft_msg:
+		body, err := json.Marshal(msg)
 		if err != nil {
 			return err
 		}
-		request := gorequest.New()
-		for _, addr := range hn.Addrs {
-			request.Post(addr + "/pbft_message").Send(body).End()
-		}
-	case *model.BlockMeta:
-		body, err := proto.Marshal(x)
+		go func() {
+			request := gorequest.New()
+			request.Header.Add("peer_id", hn.NodeID)
+			request.Header.Add("peer_address", hn.LocalAddress)
+			for _, addr := range hn.Addrs {
+				request.Post(addr + "/pbft_message").Send(body).End()
+			}
+		}()
+
+	case model.BroadcastMsgType_send_block_meta:
+		body, err := json.Marshal(msg)
 		if err != nil {
 			return err
 		}
-		request := gorequest.New()
-		for _, addr := range hn.Addrs {
-			request.Post(addr + "/block_meta").Send(body).End()
-		}
-	case *model.Tx:
-		body, err := proto.Marshal(x)
+		go func() {
+			request := gorequest.New()
+			request.Header.Add("peer_id", hn.NodeID)
+			request.Header.Add("peer_address", hn.LocalAddress)
+			for _, addr := range hn.Addrs {
+				request.Post(addr + "/block_meta").Send(body).End()
+			}
+		}()
+
+	case model.BroadcastMsgType_send_tx:
+		body, err := json.Marshal(msg)
 		if err != nil {
 			return err
 		}
-		request := gorequest.New()
-		for _, addr := range hn.Addrs {
-			request.Post(addr + "/transaction").Send(body).End()
-		}
+		go func() {
+			request := gorequest.New()
+			request.Header.Add("peer_id", hn.NodeID)
+			request.Header.Add("peer_address", hn.LocalAddress)
+			for _, addr := range hn.Addrs {
+				request.Post(addr + "/transaction").Send(body).End()
+			}
+		}()
 	}
 	return nil
 }
 
-func (hn *HTTPNetWork) Recv() <-chan interface{} {
-	return hn.msgQueue
+func (hn *HTTPNetWork) BroadcastToPeer(msg *network.BroadcastMsg, p *network.Peer) error {
+	return nil
 }
 
-func (hn *HTTPNetWork) consensusHandler(w http.ResponseWriter, r *http.Request) {
-	content, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return
-	}
-	pbftMsg := model.PbftMessage{}
-	if proto.Unmarshal(content, &pbftMsg) != nil {
-		return
-	}
-
-	select {
-	case hn.msgQueue <- &pbftMsg:
-	default:
-	}
-	w.Write([]byte("ok"))
+func (hn *HTTPNetWork) RemovePeer(p *network.Peer) error {
+	return nil
 }
 
-func (hn *HTTPNetWork) blockMetaHandler(w http.ResponseWriter, r *http.Request) {
-	content, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return
-	}
-	meta := model.BlockMeta{}
-	if proto.Unmarshal(content, &meta) != nil {
-		return
-	}
-
-	select {
-	case hn.msgQueue <- &meta:
-	default:
-	}
-	w.Write([]byte("ok"))
+func (hn *HTTPNetWork) RegisterOnReceive(modelID string, callBack network.OnReceive) error {
+	hn.recvCB[modelID] = callBack
+	return nil
 }
 
-func (hn *HTTPNetWork) txHandler(w http.ResponseWriter, r *http.Request) {
-	content, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return
+func (hn *HTTPNetWork) Recv() {
+	for {
+		select {
+		case msg := <-hn.msgQueue:
+			broadMsg, _ := json.Marshal(msg.BroadcastMsg)
+			onReceive := hn.recvCB[msg.ModelID]
+			if onReceive != nil {
+				go onReceive(msg.ModelID, broadMsg, msg.Peer)
+			}
+		}
 	}
-	tx := model.Tx{}
-	if proto.Unmarshal(content, &tx) != nil {
-		return
-	}
-
-	select {
-	case hn.msgQueue <- &tx:
-	default:
-	}
-	w.Write([]byte("ok"))
 }

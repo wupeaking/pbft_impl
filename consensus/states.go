@@ -130,7 +130,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 			pbft.sm.receivedBlock = blk
 			pbft.appendLogMsg(signedMsg)
 			// 广播消息
-			pbft.switcher.Broadcast(signedMsg)
+			pbft.broadcastStateMsg(signedMsg)
 			// 启动超时定时器器
 			pbft.timer.Reset(10 * time.Second)
 			// 直接迁移到 prepare状态
@@ -215,7 +215,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		pbft.appendLogMsg(signedMsg)
 
 		// 广播消息
-		pbft.switcher.Broadcast(signedMsg)
+		pbft.broadcastStateMsg(signedMsg)
 		pbft.sm.ChangeState(model.States_Preparing)
 		pbft.timer.Reset(10 * time.Second)
 
@@ -313,7 +313,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		}
 		newMsg.OtherInfos = prepareMsgs
 		// 广播消息
-		pbft.switcher.Broadcast(model.NewPbftMessage(&newMsg))
+		pbft.broadcastStateMsg(model.NewPbftMessage(&newMsg))
 
 	case model.States_Checking:
 		content := msg.GetGeneric()
@@ -350,7 +350,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 			newMsg.Info = signedInfo
 
 			pbft.appendLogMsg(model.NewPbftMessage(newMsg))
-			pbft.switcher.Broadcast(model.NewPbftMessage(newMsg))
+			pbft.broadcastStateMsg(model.NewPbftMessage(newMsg))
 			pbft.sm.ChangeState(model.States_Committing)
 			pbft.timer.Reset(10 * time.Second)
 			return
@@ -433,7 +433,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		}
 		newMsg.OtherInfos = commitMsgs
 		// 广播消息
-		pbft.switcher.Broadcast(model.NewPbftMessage(&newMsg))
+		pbft.broadcastStateMsg(model.NewPbftMessage(&newMsg))
 
 	case model.States_Finished:
 		// 停止超时定时器

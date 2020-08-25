@@ -1,10 +1,12 @@
 package consensus
 
 import (
+	"encoding/json"
 	"sync"
 	"time"
 
 	"github.com/emirpasic/gods/lists/singlylinkedlist"
+	"github.com/golang/protobuf/proto"
 	log "github.com/sirupsen/logrus"
 	"github.com/wupeaking/pbft_impl/model"
 	"github.com/wupeaking/pbft_impl/network"
@@ -95,6 +97,9 @@ func New(ws *world_state.WroldState, txPool *transaction.TxPool, switcher networ
 
 	pbft.switcher = switcher
 
+	// 注册消息回调
+	pbft.switcher.RegisterOnReceive("consensus", pbft.msgOnRecv)
+
 	return pbft, nil
 }
 
@@ -134,7 +139,7 @@ func (pbft *PBFT) Daemon() {
 				return
 			}
 			pbft.appendLogMsg(signedMsg)
-			pbft.switcher.Broadcast(signedMsg)
+			pbft.broadcastStateMsg(signedMsg)
 		}
 
 	}
@@ -176,4 +181,33 @@ func (pbft *PBFT) garbageCollection() {
 
 func (pbft *PBFT) CurrentState() model.States {
 	return pbft.sm.state
+}
+
+func (pbft *PBFT) broadcastStateMsg(msg *model.PbftMessage) error {
+	body, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	msgPkg := network.BroadcastMsg{
+		ModelID: "consensus",
+		MsgType: model.BroadcastMsgType_send_pbft_msg,
+		Msg:     body,
+	}
+	return pbft.switcher.Broadcast("consensus", &msgPkg)
+}
+
+// 注册到网络的消息回调
+func (pbft *PBFT) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer) {
+	if modelID != "consensus" {
+		return
+	}
+	var msgPkg network.BroadcastMsg
+	if json.Unmarshal(msgBytes, &msgPkg) != nil {
+		return
+	}
+	var pbftMsg *model.PbftMessage
+	if proto.Unmarshal(msgPkg.Msg, pbftMsg) != nil {
+		return
+	}
+	pbft.Msgs.InsertMsg(pbftMsg)
 }
