@@ -104,7 +104,45 @@ func (hn *HTTPNetWork) Broadcast(modelID string, msg *network.BroadcastMsg) erro
 	return nil
 }
 
-func (hn *HTTPNetWork) BroadcastToPeer(msg *network.BroadcastMsg, p *network.Peer) error {
+func (hn *HTTPNetWork) BroadcastToPeer(modelID string, msg *network.BroadcastMsg, p *network.Peer) error {
+	switch msg.MsgType {
+	case model.BroadcastMsgType_send_pbft_msg:
+		body, err := json.Marshal(msg)
+		if err != nil {
+			return err
+		}
+		go func() {
+			request := gorequest.New()
+			request.Header.Add("peer_id", hn.NodeID)
+			request.Header.Add("peer_address", hn.LocalAddress)
+			request.Post(p.Address + "/pbft_message").Send(body).End()
+		}()
+
+	case model.BroadcastMsgType_send_block_meta:
+		body, err := json.Marshal(msg)
+		if err != nil {
+			return err
+		}
+		go func() {
+			request := gorequest.New()
+			request.Header.Add("peer_id", hn.NodeID)
+			request.Header.Add("peer_address", hn.LocalAddress)
+			request.Post(p.Address + "/block_meta").Send(body).End()
+		}()
+
+	case model.BroadcastMsgType_send_tx:
+		body, err := json.Marshal(msg)
+		if err != nil {
+			return err
+		}
+		go func() {
+			request := gorequest.New()
+			request.Header.Add("peer_id", hn.NodeID)
+			request.Header.Add("peer_address", hn.LocalAddress)
+			request.Post(p.Address + "/transaction").Send(body).End()
+
+		}()
+	}
 	return nil
 }
 

@@ -10,7 +10,7 @@ type SwitcherI interface {
 	// 向所有的节点广播消息
 	Broadcast(modelID string, msg *BroadcastMsg) error
 	// 广播到指定的peer
-	BroadcastToPeer(msg *BroadcastMsg, p *Peer) error
+	BroadcastToPeer(modelID string, msg *BroadcastMsg, p *Peer) error
 	// 移除某个peer
 	RemovePeer(p *Peer) error
 	RegisterOnReceive(modelID string, callBack OnReceive) error

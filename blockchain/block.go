@@ -30,6 +30,7 @@ type BlockChain struct {
 	consensusEngine *consensus.PBFT
 	ws              *world_state.WroldState
 	switcher        network.SwitcherI
+	pool            *BlockPool
 }
 
 func New(c *consensus.PBFT, ws *world_state.WroldState, switcher network.SwitcherI) *BlockChain {
@@ -37,6 +38,7 @@ func New(c *consensus.PBFT, ws *world_state.WroldState, switcher network.Switche
 		consensusEngine: c,
 		ws:              ws,
 		switcher:        switcher,
+		pool:            NewBlockPool(ws, switcher),
 	}
 }
 
@@ -45,7 +47,31 @@ func (bc *BlockChain) Start() error {
 		return err
 	}
 
-	return nil
+	go bc.pool.Routine()
+
+	for {
+		select {
+		case block := <-bc.pool.newBlock:
+			// 新的区块来到了
+			if bc.ws.BlockNum+1 > block.BlockNum {
+				bc.pool.RemoveBlock(block)
+			}
+			if bc.ws.BlockNum+1 < block.BlockNum {
+				continue
+			}
+			if bc.consensusEngine.ApplyBlock(block) != nil {
+				continue
+			}
+			bc.consensusEngine.CommitBlock(block)
+			bc.pool.RemoveBlock(block)
+		case <-bc.pool.startEngine:
+			bc.consensusEngine.Start()
+		case <-bc.pool.stopEngine:
+			bc.consensusEngine.Stop()
+		}
+
+	}
+
 }
 
 func (bc *BlockChain) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer) {
@@ -65,6 +91,10 @@ func (bc *BlockChain) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer
 			return
 		}
 		blockNum := blockReq.BlockNum
+		if blockNum == -1 {
+			// 则认为是想获取最高区块高度
+			blockNum = int64(bc.ws.BlockNum)
+		}
 		blk, err := bc.ws.GetBlock(blockNum)
 		if err != nil {
 			logger.Warnf("依靠区块标号查询区块出错 err: %v", err)
@@ -85,7 +115,7 @@ func (bc *BlockChain) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer
 			MsgType: model.BroadcastMsgType_send_specific_block,
 			Msg:     body,
 		}
-		err = bc.switcher.BroadcastToPeer(&msg, p)
+		err = bc.switcher.BroadcastToPeer("blockchain", &msg, p)
 		if err != nil {
 			//todo:: 可能需要移除这个peer
 			bc.switcher.RemovePeer(p)
@@ -107,11 +137,12 @@ func (bc *BlockChain) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer
 			if bc.ws.BlockNum >= blockResp.Block.BlockNum {
 				return
 			}
-			// todo::
-			// 1. 暂停共识
-			bc.consensusEngine.Stop()
-			// 2. 启动下载区块任务
-			//
+			bc.pool.SetPeerHight(p, blockResp.Block.BlockNum)
+		} else {
+			if !bc.consensusEngine.VerfifyMostBlock(blockResp.Block) {
+				return
+			}
+			bc.pool.AddBlock(p, blockResp.Block)
 		}
 
 	}

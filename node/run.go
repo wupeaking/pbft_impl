@@ -170,22 +170,4 @@ func (node *PBFTNode) Run() {
 	node.switcher.Start()
 
 	select {}
-
-	// for msg := range node.switcher.Recv() {
-	// 	switch x := msg.(type) {
-	// 	case *model.BlockMeta:
-	// 		// 校验BlockMeta
-	// 		// 判断当前节点是否是处于最高区块
-	// 		if x.BlockHeight > node.ws.BlockNum {
-	// 			// 停止共识
-	// 			// 再次走到判断是否是最高区块高度流程
-	// 			break
-	// 		} else {
-
-	// 		}
-	// 	case *model.PbftMessage:
-	// 		node.consensusEngine.Msgs.InsertMsg(x)
-	// 	}
-	// }
-
 }
