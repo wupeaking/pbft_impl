@@ -78,7 +78,7 @@ func (bc *BlockChain) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer
 			// 只发送区块头
 			blk.Content = nil
 		}
-		resp := model.BlockResponse{RequestType: model.BlockRequestType_only_header, Block: blk}
+		resp := model.BlockResponse{RequestType: blockReq.RequestType, Block: blk}
 		body, _ := proto.Marshal(&resp)
 		msg := network.BroadcastMsg{
 			ModelID: "blockchain",
@@ -98,8 +98,22 @@ func (bc *BlockChain) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer
 		if proto.Unmarshal(msgPkg.Msg, blockResp) != nil {
 			return
 		}
-		//if blockResp.RequestType
-		// 校验
+		if blockResp.RequestType == model.BlockRequestType_only_header {
+			// 校验区块头
+			if !bc.consensusEngine.VerfifyBlockHeader(blockResp.Block) {
+				return
+			}
+			// 判断高度
+			if bc.ws.BlockNum >= blockResp.Block.BlockNum {
+				return
+			}
+			// todo::
+			// 1. 暂停共识
+			bc.consensusEngine.Stop()
+			// 2. 启动下载区块任务
+			//
+		}
+
 	}
 
 }
