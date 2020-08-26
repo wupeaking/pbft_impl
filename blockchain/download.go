@@ -20,11 +20,152 @@ type BlockPool struct {
 	stopEngine  chan struct{}
 	startEngine chan struct{}
 	sync.RWMutex
-	maxHeight       uint64
-	requestComplate map[uint64]chan struct{}
+	maxHeight        uint64
+	requestComplate  map[uint64]chan struct{}
+	downloadSig      chan struct{}
+	loadRoutineNum   int
+	loadRoutineGroup *sync.WaitGroup
+}
+
+func NewBlockPool(ws *world_state.WroldState, switcher network.SwitcherI) *BlockPool {
+	return &BlockPool{
+		switcher:         switcher,
+		ws:               ws,
+		heightPeers:      make(map[uint64][]*network.Peer),
+		newBlock:         make(chan *model.PbftBlock),
+		addBlock:         make(chan *model.PbftBlock),
+		startEngine:      make(chan struct{}, 1),
+		stopEngine:       make(chan struct{}, 1),
+		requestComplate:  make(map[uint64]chan struct{}),
+		downloadSig:      make(chan struct{}, 1),
+		loadRoutineGroup: &sync.WaitGroup{},
+		loadRoutineNum:   100,
+	}
+}
+
+func (bp *BlockPool) SetPeerHight(peer *network.Peer, height uint64) {
+	if bp.ws.BlockNum >= height {
+		return
+	}
+	// 说明本节点已经落后 停止共识 追上最高节点
+	if bp.maxHeight < height {
+		bp.maxHeight = height
+	}
+}
+
+func (bp *BlockPool) AddBlock(peer *network.Peer, block *model.PbftBlock) {
+	if bp.ws.BlockNum >= block.BlockNum {
+		return
+	}
+	bp.addBlock <- block
+
+	complate := bp.requestComplate[block.BlockNum]
+	if complate != nil {
+		select {
+		case complate <- struct{}{}:
+		default:
+		}
+	}
+}
+
+func (bp *BlockPool) RemoveBlock(block *model.PbftBlock) {
+	bp.Lock()
+	delete(bp.numBlock, block.BlockNum)
+	bp.Unlock()
+}
+
+func (bp *BlockPool) Routine() {
+	// 启动下载请求
+	go bp.DownloadBlock()
+
+	trySyncTicker := time.NewTicker(1 * time.Second)
+	stateTicker := time.NewTicker(500 * time.Millisecond)
+	for {
+		select {
+		case <-trySyncTicker.C:
+			// 尝试请求最高区块
+			bp.requestBlockHeight()
+		case <-stateTicker.C:
+			if bp.ws.BlockNum >= bp.maxHeight {
+				select {
+				case bp.startEngine <- struct{}{}:
+				default:
+				}
+
+			} else {
+				select {
+				case bp.stopEngine <- struct{}{}:
+				default:
+				}
+				select {
+				case bp.downloadSig <- struct{}{}:
+				default:
+				}
+			}
+		case block := <-bp.addBlock:
+			if bp.ws.BlockNum+1 == block.BlockNum {
+				bp.newBlock <- block
+				nextnum := bp.ws.BlockNum + 2
+				for {
+					// 尝试查看下一个区块是否已经存在
+					b, ok := bp.numBlock[nextnum]
+					if ok {
+						bp.newBlock <- b
+						nextnum++
+					} else {
+						break
+					}
+				}
+			} else {
+				bp.Lock()
+				bp.numBlock[block.BlockNum] = block
+				bp.Unlock()
+			}
+		}
+	}
+}
+
+func (bp *BlockPool) requestBlockHeight() {
+	request := model.BlockRequest{
+		RequestType: model.BlockRequestType_only_header,
+		BlockNum:    -1,
+	}
+	body, _ := proto.Marshal(&request)
+	msg := network.BroadcastMsg{
+		ModelID: "blockchain",
+		MsgType: model.BroadcastMsgType_request_load_block,
+		Msg:     body,
+	}
+	bp.switcher.Broadcast("blockchain", &msg)
+}
+
+func (bp *BlockPool) DownloadBlock() {
+	for range bp.downloadSig {
+		curHeight := bp.ws.BlockNum
+		maxHeight := bp.maxHeight
+		if curHeight >= maxHeight {
+			continue
+		}
+		// 最大容许启动bp.loadRoutineNum个routine去下载区块
+		window := min(maxHeight, curHeight+uint64(bp.loadRoutineNum))
+		bp.loadRoutineGroup.Add(int(window - curHeight))
+		for num := curHeight + 1; num < window; num++ {
+			go bp.downRoutine(num)
+		}
+		bp.loadRoutineGroup.Wait()
+	}
+}
+
+func min(a, b uint64) uint64 {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func (bp *BlockPool) downRoutine(num uint64) {
+	defer func() { bp.loadRoutineGroup.Done() }()
+
 	request := model.BlockRequest{
 		RequestType: model.BlockRequestType_whole_content,
 		BlockNum:    int64(num),
@@ -73,107 +214,4 @@ func (bp *BlockPool) pickPeer(blockNum uint64, oldPeer *network.Peer) *network.P
 		}
 	}
 	return nil
-}
-
-func NewBlockPool(ws *world_state.WroldState, switcher network.SwitcherI) *BlockPool {
-	return &BlockPool{
-		switcher:        switcher,
-		ws:              ws,
-		heightPeers:     make(map[uint64][]*network.Peer),
-		newBlock:        make(chan *model.PbftBlock),
-		addBlock:        make(chan *model.PbftBlock),
-		startEngine:     make(chan struct{}, 1),
-		stopEngine:      make(chan struct{}, 1),
-		requestComplate: make(map[uint64]chan struct{}),
-	}
-}
-
-func (bp *BlockPool) SetPeerHight(peer *network.Peer, height uint64) {
-	if bp.ws.BlockNum >= height {
-		return
-	}
-	// 说明本节点已经落后 停止共识 追上最高节点
-	if bp.maxHeight < height {
-		bp.maxHeight = height
-	}
-}
-
-func (bp *BlockPool) AddBlock(peer *network.Peer, block *model.PbftBlock) {
-	if bp.ws.BlockNum >= block.BlockNum {
-		return
-	}
-	bp.addBlock <- block
-
-	complate := bp.requestComplate[block.BlockNum]
-	if complate != nil {
-		select {
-		case complate <- struct{}{}:
-		default:
-		}
-	}
-}
-
-func (bp *BlockPool) RemoveBlock(block *model.PbftBlock) {
-	bp.Lock()
-	delete(bp.numBlock, block.BlockNum)
-	bp.Unlock()
-}
-
-func (bp *BlockPool) Routine() {
-	trySyncTicker := time.NewTicker(1 * time.Second)
-	stateTicker := time.NewTicker(500 * time.Millisecond)
-	for {
-		select {
-		case <-trySyncTicker.C:
-			// 尝试请求最高区块
-			bp.requestBlockHeight()
-		case <-stateTicker.C:
-			if bp.ws.BlockNum >= bp.maxHeight {
-				select {
-				case bp.startEngine <- struct{}{}:
-				default:
-				}
-
-			} else {
-				select {
-				case bp.stopEngine <- struct{}{}:
-				default:
-				}
-				// todo:: 下载区块
-			}
-		case block := <-bp.addBlock:
-			if bp.ws.BlockNum+1 == block.BlockNum {
-				bp.newBlock <- block
-				nextnum := bp.ws.BlockNum + 2
-				for {
-					// 尝试查看下一个区块是否已经存在
-					b, ok := bp.numBlock[nextnum]
-					if ok {
-						bp.newBlock <- b
-						nextnum++
-					} else {
-						break
-					}
-				}
-			} else {
-				bp.Lock()
-				bp.numBlock[block.BlockNum] = block
-				bp.Unlock()
-			}
-		}
-	}
-}
-
-func (bp *BlockPool) requestBlockHeight() {
-	request := model.BlockRequest{
-		RequestType: model.BlockRequestType_only_header,
-		BlockNum:    -1,
-	}
-	body, _ := proto.Marshal(&request)
-	msg := network.BroadcastMsg{
-		ModelID: "blockchain",
-		MsgType: model.BroadcastMsgType_request_load_block,
-		Msg:     body,
-	}
-	bp.switcher.Broadcast("blockchain", &msg)
 }
