@@ -100,6 +100,8 @@ func New(ws *world_state.WroldState, txPool *transaction.TxPool, switcher networ
 	// 注册消息回调
 	pbft.switcher.RegisterOnReceive("consensus", pbft.msgOnRecv)
 
+	pbft.StopFlag = true
+
 	return pbft, nil
 }
 
@@ -113,6 +115,9 @@ func (pbft *PBFT) Daemon() {
 	for {
 		select {
 		case <-pbft.Msgs.WaitMsg():
+			if pbft.StopFlag {
+				continue
+			}
 			// 有消息进入
 			pbft.StateMigrate(pbft.Msgs.GetMsg())
 
@@ -120,9 +125,15 @@ func (pbft *PBFT) Daemon() {
 		// 	pbft.tiggerMigrateProcess(s)
 
 		case s := <-pbft.sm.changeSig:
+			if pbft.StopFlag {
+				continue
+			}
 			pbft.tiggerMigrateProcess(s)
 
 		case <-pbft.timer.C:
+			if pbft.StopFlag {
+				continue
+			}
 			// 有超时 则进入viewchang状态 发起viewchange消息
 			pbft.logger.Debugf("超时 进入ViewChanging状态")
 			pbft.sm.ChangeState(model.States_ViewChanging)
@@ -210,4 +221,17 @@ func (pbft *PBFT) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer) {
 		return
 	}
 	pbft.Msgs.InsertMsg(pbftMsg)
+}
+
+func (pbft *PBFT) Start() {
+	pbft.Lock()
+	pbft.StopFlag = false
+	pbft.Unlock()
+}
+
+func (pbft *PBFT) Stop() {
+	pbft.Lock()
+	pbft.StopFlag = true
+	pbft.sm.ChangeState(model.States_NotStartd)
+	pbft.Unlock()
 }

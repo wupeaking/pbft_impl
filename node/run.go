@@ -130,9 +130,9 @@ func (node *PBFTNode) Run() {
 			node.consensusEngine.ApplyBlock(blk)
 		}
 	}
-	// 如果不是验证者
-	{
-		// todo::
+	//// todo:: 如果不是验证者 暂时还不能运行
+	if node.ws.CurVerfier == nil {
+		logger.Fatalf("当前节点不是验证者, 暂时不能启动")
 	}
 
 	//1. 如何知道自己处于最高区块高度

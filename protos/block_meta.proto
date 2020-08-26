@@ -41,6 +41,7 @@ enum BroadcastMsgType {
 
     // blockchain
     request_load_block = 20;
+    send_specific_block = 21;
 }
 
 
