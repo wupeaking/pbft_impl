@@ -94,7 +94,12 @@ func (bc *BlockChain) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer
 
 	case model.BroadcastMsgType_send_specific_block:
 		// 表示对方向本节点发送区块信息
-
+		var blockResp *model.BlockResponse
+		if proto.Unmarshal(msgPkg.Msg, blockResp) != nil {
+			return
+		}
+		//if blockResp.RequestType
+		// 校验
 	}
 
 }

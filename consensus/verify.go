@@ -148,6 +148,49 @@ func (pbft *PBFT) VerfifyMostBlock(blk *model.PbftBlock) bool {
 	return false
 }
 
+// VerfifyBlockHeader 验证区块头
+func (pbft *PBFT) VerfifyBlockHeader(blk *model.PbftBlock) bool {
+	if !pbft.isVaildVerifier(blk.SignerId) {
+		return false
+	}
+
+	hash, _ := cryptogo.Hex2Bytes(blk.BlockId)
+	pubKey, err := cryptogo.LoadPublicKey(fmt.Sprintf("0x%x", blk.SignerId))
+	if err != nil {
+		return false
+	}
+	if !cryptogo.VerifySign(pubKey, fmt.Sprintf("0x%x", blk.Sign), fmt.Sprintf("0x%x", hash)) {
+		return false
+	}
+
+	f := len(pbft.ws.Verifiers) / 3
+	var minNodes int
+	if f == 0 {
+		minNodes = len(pbft.ws.Verifiers)
+	} else {
+		minNodes = 2*f + 1
+	}
+
+	cnt := 0
+	for _, pair := range blk.SignPairs {
+		if !pbft.isVaildVerifier(pair.SignerId) {
+			continue
+		}
+
+		pubKey, err := cryptogo.LoadPublicKey(fmt.Sprintf("0x%x", pair.SignerId))
+		if err != nil {
+			return false
+		}
+		if cryptogo.VerifySign(pubKey, fmt.Sprintf("0x%x", pair.Sign), fmt.Sprintf("0x%x", hash)) {
+			cnt++
+		}
+	}
+	if cnt+1 >= minNodes {
+		return true
+	}
+	return false
+}
+
 func (pbft *PBFT) SignMsg(msg *model.PbftMessage) (*model.PbftMessage, error) {
 	if !pbft.isValidMsg(msg) {
 		return nil, fmt.Errorf("msg is nil")
