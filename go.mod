@@ -3,6 +3,7 @@ module github.com/wupeaking/pbft_impl
 go 1.13
 
 require (
+	github.com/btcsuite/btcd v0.20.1-beta
 	github.com/coreos/etcd v3.3.22+incompatible
 	github.com/elazarl/goproxy v0.0.0-20200803153952-ec485169a1eb // indirect
 	github.com/emirpasic/gods v1.12.0

@@ -20,3 +20,7 @@ message tx {
     bytes input = 5;
     bytes sign = 6;
 }
+
+message txs {
+    repeated tx tansactions = 1;
+}

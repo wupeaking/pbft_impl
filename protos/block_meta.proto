@@ -37,7 +37,7 @@ enum BroadcastMsgType {
     send_pbft_msg = 1;
     send_block_meta = 2;
     // tx
-    send_tx = 10;
+    send_tx = 10;  // 意味着接收到从其他节点发过来的交易
 
     // blockchain
     request_load_block = 20;

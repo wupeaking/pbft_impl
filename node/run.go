@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wupeaking/pbft_impl/blockchain"
 	"github.com/wupeaking/pbft_impl/consensus"
 	cryptogo "github.com/wupeaking/pbft_impl/crypto"
 	"github.com/wupeaking/pbft_impl/model"
@@ -20,6 +21,8 @@ type PBFTNode struct {
 	consensusEngine *consensus.PBFT
 	switcher        network.SwitcherI
 	ws              *world_state.WroldState
+	chain           *blockchain.BlockChain
+	tx              *transaction.TxPool
 }
 
 func New() *PBFTNode {
@@ -42,7 +45,7 @@ func New() *PBFTNode {
 	}
 
 	switcher := http_network.New(cfg.NodeAddrs, cfg.LocalAddr, cfg.NetworkCfg.Publickey)
-	txPool := transaction.NewTxPool()
+	txPool := transaction.NewTxPool(switcher)
 
 	var consen *consensus.PBFT
 
@@ -104,10 +107,14 @@ func New() *PBFTNode {
 		consen = pbft
 	}
 
+	chain := blockchain.New(consen, ws, switcher)
+
 	return &PBFTNode{
 		consensusEngine: consen,
 		switcher:        switcher,
 		ws:              ws,
+		chain:           chain,
+		tx:              txPool,
 	}
 }
 
@@ -135,14 +142,14 @@ func (node *PBFTNode) Run() {
 		logger.Fatalf("当前节点不是验证者, 暂时不能启动")
 	}
 
-	//1. 如何知道自己处于最高区块高度
-	// 广播获取最高区块高度
-	// 要求在规定时间内 收到指定的区块高度
-	//	判断是否已经大于最高区块高度  如果没有则 停止共识 接收下载区块高度
-	// 循环知道达到最高区块高度
-
+	// 启动P2P
+	go node.switcher.Start()
 	// 启动共识
 	go node.consensusEngine.Daemon()
+	// 启动Blockchain
+	go node.chain.Start()
+	// 启动交易池
+	go node.tx.Start()
 
 	curBlock := 0
 	go func() {
@@ -166,8 +173,6 @@ func (node *PBFTNode) Run() {
 			}
 		}
 	}()
-
-	node.switcher.Start()
 
 	select {}
 }

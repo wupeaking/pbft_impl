@@ -52,6 +52,7 @@ func (bc *BlockChain) Start() error {
 	for {
 		select {
 		case block := <-bc.pool.newBlock:
+			logger.Debugf("接收到一个新的区块, 区块高度为: %d", block.GetBlockNum())
 			// 新的区块来到了
 			if bc.ws.BlockNum+1 > block.BlockNum {
 				bc.pool.RemoveBlock(block)
@@ -65,8 +66,10 @@ func (bc *BlockChain) Start() error {
 			bc.consensusEngine.CommitBlock(block)
 			bc.pool.RemoveBlock(block)
 		case <-bc.pool.startEngine:
+			logger.Debugf("区块高度追上最高节点, 启动共识")
 			bc.consensusEngine.Start()
 		case <-bc.pool.stopEngine:
+			logger.Debugf("区块高度落后, 需要停止共识")
 			bc.consensusEngine.Stop()
 		}
 
