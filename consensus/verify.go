@@ -42,7 +42,7 @@ func (pbft *PBFT) VerfifyMsg(msg *model.PbftMessage) bool {
 }
 
 func (pbft *PBFT) verfifyMsgInfo(msgInfo *model.PbftMessageInfo) bool {
-	if !pbft.isVaildVerifier(msgInfo.SignerId) {
+	if !pbft.IsVaildVerifier(msgInfo.SignerId) {
 		return false
 	}
 
@@ -64,7 +64,7 @@ func (pbft *PBFT) verfifyMsgInfo(msgInfo *model.PbftMessageInfo) bool {
 }
 
 func (pbft *PBFT) verfifyBlock(blk *model.PbftBlock) bool {
-	if !pbft.isVaildVerifier(blk.SignerId) {
+	if !pbft.IsVaildVerifier(blk.SignerId) {
 		return false
 	}
 
@@ -93,7 +93,7 @@ func (pbft *PBFT) verfifyBlock(blk *model.PbftBlock) bool {
 
 // VerfifyMostBlock 验证有超过2/3的节点已对区块进行了签名
 func (pbft *PBFT) VerfifyMostBlock(blk *model.PbftBlock) bool {
-	if !pbft.isVaildVerifier(blk.SignerId) {
+	if !pbft.IsVaildVerifier(blk.SignerId) {
 		return false
 	}
 
@@ -130,7 +130,7 @@ func (pbft *PBFT) VerfifyMostBlock(blk *model.PbftBlock) bool {
 
 	cnt := 0
 	for _, pair := range blk.SignPairs {
-		if !pbft.isVaildVerifier(pair.SignerId) {
+		if !pbft.IsVaildVerifier(pair.SignerId) {
 			continue
 		}
 
@@ -150,7 +150,7 @@ func (pbft *PBFT) VerfifyMostBlock(blk *model.PbftBlock) bool {
 
 // VerfifyBlockHeader 验证区块头
 func (pbft *PBFT) VerfifyBlockHeader(blk *model.PbftBlock) bool {
-	if !pbft.isVaildVerifier(blk.SignerId) {
+	if !pbft.IsVaildVerifier(blk.SignerId) {
 		return false
 	}
 
@@ -173,7 +173,7 @@ func (pbft *PBFT) VerfifyBlockHeader(blk *model.PbftBlock) bool {
 
 	cnt := 0
 	for _, pair := range blk.SignPairs {
-		if !pbft.isVaildVerifier(pair.SignerId) {
+		if !pbft.IsVaildVerifier(pair.SignerId) {
 			continue
 		}
 
@@ -295,7 +295,7 @@ func (pbft *PBFT) signBlock(blk *model.PbftBlock) (*model.PbftBlock, error) {
 	return blk, nil
 }
 
-func (pbft *PBFT) isVaildVerifier(singerID []byte) bool {
+func (pbft *PBFT) IsVaildVerifier(singerID []byte) bool {
 	_, ok := pbft.verifiers[string(singerID)]
 	return ok
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/emirpasic/gods/lists/singlylinkedlist"
 	"github.com/golang/protobuf/proto"
 	log "github.com/sirupsen/logrus"
+	"github.com/wupeaking/pbft_impl/common/config"
 	"github.com/wupeaking/pbft_impl/model"
 	"github.com/wupeaking/pbft_impl/network"
 	"github.com/wupeaking/pbft_impl/storage/world_state"
@@ -27,6 +28,7 @@ type PBFT struct {
 	txPool      *transaction.TxPool
 	tiggerTimer *time.Timer
 	StopFlag    bool
+	cfg         *config.Configure
 	sync.Mutex
 }
 
@@ -68,8 +70,9 @@ func (mq *MsgQueue) WaitMsg() <-chan struct{} {
 	return mq.comingFlag
 }
 
-func New(ws *world_state.WroldState, txPool *transaction.TxPool, switcher network.SwitcherI) (*PBFT, error) {
+func New(ws *world_state.WroldState, txPool *transaction.TxPool, switcher network.SwitcherI, cfg *config.Configure) (*PBFT, error) {
 	pbft := &PBFT{}
+	pbft.cfg = cfg
 	pbft.Msgs = NewMsgQueue()
 	pbft.sm = NewStateMachine()
 	pbft.timer = time.NewTimer(10 * time.Second)
@@ -96,16 +99,15 @@ func New(ws *world_state.WroldState, txPool *transaction.TxPool, switcher networ
 	pbft.txPool = txPool
 
 	pbft.switcher = switcher
-
-	// 注册消息回调
-	pbft.switcher.RegisterOnReceive("consensus", pbft.msgOnRecv)
-
 	pbft.StopFlag = true
 
 	return pbft, nil
 }
 
 func (pbft *PBFT) Daemon() {
+	// 注册消息回调
+	pbft.switcher.RegisterOnReceive("consensus", pbft.msgOnRecv)
+
 	// 启动超时定时器
 	//pbft.timer.Reset(10 * time.Second)
 	// pbft.tiggerTimer.Reset(1000 * time.Millisecond)

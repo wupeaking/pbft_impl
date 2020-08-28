@@ -2,15 +2,28 @@ package http_network
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/parnurzeal/gorequest"
+	log "github.com/sirupsen/logrus"
 	"github.com/wupeaking/pbft_impl/model"
 	"github.com/wupeaking/pbft_impl/network"
 )
+
+var logger *log.Entry
+
+func init() {
+	logg := log.New()
+	logg.SetLevel(log.DebugLevel)
+	logg.SetReportCaller(true)
+	logg.SetFormatter(&log.TextFormatter{
+		DisableColors: true,
+		FullTimestamp: true,
+	})
+	logger = logg.WithField("module", "P2P")
+}
 
 type HTTPNetWork struct {
 	Addrs        []string // 所有的节点地址
@@ -39,10 +52,12 @@ func New(nodeAddrs []string, local string, nodeID string) network.SwitcherI {
 
 func (hn *HTTPNetWork) Start() error {
 	r := mux.NewRouter()
-	r.HandleFunc("/pbft_message", hn.commonHander).Methods("POST")
-	r.HandleFunc("/block_meta", hn.commonHander).Methods("POST")
-	r.HandleFunc("/transaction", hn.commonHander).Methods("POST")
-	r.HandleFunc("/block_header/{num}", hn.commonHander).Methods("GET")
+	// r.HandleFunc("/pbft_message", hn.commonHander).Methods("POST")
+	// r.HandleFunc("/block_meta", hn.commonHander).Methods("POST")
+	// r.HandleFunc("/transaction", hn.commonHander).Methods("POST")
+	// r.HandleFunc("/block/{num}", hn.commonHander).Methods("GET")
+	// r.HandleFunc("/block", hn.commonHander).Methods("POST")
+	r.HandleFunc("/broadcast", hn.commonHander).Methods("POST")
 
 	srv := &http.Server{
 		Handler:      r,
@@ -50,7 +65,7 @@ func (hn *HTTPNetWork) Start() error {
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
-	go log.Fatal(srv.ListenAndServe())
+	go logger.Fatal(srv.ListenAndServe())
 
 	go hn.Recv()
 
@@ -58,90 +73,45 @@ func (hn *HTTPNetWork) Start() error {
 }
 
 func (hn *HTTPNetWork) Broadcast(modelID string, msg *network.BroadcastMsg) error {
+	requestBody, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	request := gorequest.New()
+	request.Header.Add("peer_id", hn.NodeID)
+	request.Header.Add("peer_address", "http://"+hn.LocalAddress)
+
 	switch msg.MsgType {
-	case model.BroadcastMsgType_send_pbft_msg:
-		body, err := json.Marshal(msg)
-		if err != nil {
-			return err
-		}
+	case model.BroadcastMsgType_send_pbft_msg, model.BroadcastMsgType_send_block_meta,
+		model.BroadcastMsgType_send_tx, model.BroadcastMsgType_request_load_block:
 		go func() {
-			request := gorequest.New()
-			request.Header.Add("peer_id", hn.NodeID)
-			request.Header.Add("peer_address", hn.LocalAddress)
 			for _, addr := range hn.Addrs {
-				request.Post(addr + "/pbft_message").Send(body).End()
+				request.Post(addr + "/broadcast").Send(requestBody).End()
 			}
 		}()
+	default:
 
-	case model.BroadcastMsgType_send_block_meta:
-		body, err := json.Marshal(msg)
-		if err != nil {
-			return err
-		}
-		go func() {
-			request := gorequest.New()
-			request.Header.Add("peer_id", hn.NodeID)
-			request.Header.Add("peer_address", hn.LocalAddress)
-			for _, addr := range hn.Addrs {
-				request.Post(addr + "/block_meta").Send(body).End()
-			}
-		}()
-
-	case model.BroadcastMsgType_send_tx:
-		body, err := json.Marshal(msg)
-		if err != nil {
-			return err
-		}
-		go func() {
-			request := gorequest.New()
-			request.Header.Add("peer_id", hn.NodeID)
-			request.Header.Add("peer_address", hn.LocalAddress)
-			for _, addr := range hn.Addrs {
-				request.Post(addr + "/transaction").Send(body).End()
-			}
-		}()
 	}
 	return nil
 }
 
 func (hn *HTTPNetWork) BroadcastToPeer(modelID string, msg *network.BroadcastMsg, p *network.Peer) error {
+	requestBody, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	request := gorequest.New()
+	request.Header.Add("peer_id", hn.NodeID)
+	request.Header.Add("peer_address", "http://"+hn.LocalAddress)
+
 	switch msg.MsgType {
-	case model.BroadcastMsgType_send_pbft_msg:
-		body, err := json.Marshal(msg)
-		if err != nil {
-			return err
-		}
+	case model.BroadcastMsgType_send_pbft_msg, model.BroadcastMsgType_send_block_meta,
+		model.BroadcastMsgType_send_tx, model.BroadcastMsgType_request_load_block:
 		go func() {
-			request := gorequest.New()
-			request.Header.Add("peer_id", hn.NodeID)
-			request.Header.Add("peer_address", hn.LocalAddress)
-			request.Post(p.Address + "/pbft_message").Send(body).End()
+			request.Post(p.Address + "/broadcast").Send(requestBody).End()
 		}()
+	default:
 
-	case model.BroadcastMsgType_send_block_meta:
-		body, err := json.Marshal(msg)
-		if err != nil {
-			return err
-		}
-		go func() {
-			request := gorequest.New()
-			request.Header.Add("peer_id", hn.NodeID)
-			request.Header.Add("peer_address", hn.LocalAddress)
-			request.Post(p.Address + "/block_meta").Send(body).End()
-		}()
-
-	case model.BroadcastMsgType_send_tx:
-		body, err := json.Marshal(msg)
-		if err != nil {
-			return err
-		}
-		go func() {
-			request := gorequest.New()
-			request.Header.Add("peer_id", hn.NodeID)
-			request.Header.Add("peer_address", hn.LocalAddress)
-			request.Post(p.Address + "/transaction").Send(body).End()
-
-		}()
 	}
 	return nil
 }

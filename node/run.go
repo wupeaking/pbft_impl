@@ -1,12 +1,11 @@
 package node
 
 import (
-	"encoding/hex"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/wupeaking/pbft_impl/blockchain"
+	"github.com/wupeaking/pbft_impl/common/config"
 	"github.com/wupeaking/pbft_impl/consensus"
 	cryptogo "github.com/wupeaking/pbft_impl/crypto"
 	"github.com/wupeaking/pbft_impl/model"
@@ -35,52 +34,49 @@ func New() *PBFTNode {
 	}
 
 	// 尝试读取配置文件
-	cfg, err := LoadConfig("./.counch/config.json")
+	cfg, err := config.LoadConfig("./.counch/config.json")
 	if err != nil {
 		logger.Fatalf("读取配置文件发生错误 err: %v", err)
 	}
-	if cfg == nil {
-		logger.Warnf("未读取到配置文件  尝试使用默认配置")
-		cfg, _ = DefaultConfig()
-	}
-
 	switcher := http_network.New(cfg.NodeAddrs, cfg.LocalAddr, cfg.NetworkCfg.Publickey)
 	txPool := transaction.NewTxPool(switcher)
 
 	var consen *consensus.PBFT
 
 	if genesis == nil {
+		logger.Infof("当前未读取到本地创世区块, 使用配置文件创建创建创世区块")
 		// 生成创世区块
-		var pub, pri []byte
-		if strings.HasPrefix(cfg.ConsensusCfg.Publickey, "0x") || strings.HasPrefix(cfg.ConsensusCfg.Publickey, "0x") {
-			pub, _ = hex.DecodeString(cfg.ConsensusCfg.Publickey[2:])
-		}
-		if strings.HasPrefix(cfg.ConsensusCfg.PriVateKey, "0x") || strings.HasPrefix(cfg.ConsensusCfg.PriVateKey, "0x") {
-			pri, _ = hex.DecodeString(cfg.ConsensusCfg.PriVateKey[2:])
+		if len(cfg.ConsensusCfg.Verfiers) == 0 {
+			logger.Fatalf("配置文件内容错误 不能设置空验证者列表")
 		}
 		zeroBlock := model.Genesis{
-			Verifiers: []*model.Verifier{
-				{
-					PublickKey: pub,
-					PrivateKey: nil,
-					SeqNum:     0,
-				},
-			},
+			Verifiers: make([]*model.Verifier, 0),
 		}
-		ws.CurVerfier = &model.Verifier{PublickKey: pub, PrivateKey: pri, SeqNum: 0}
-		ws.VerifierNo = 0
+
+		for i, verfiers := range cfg.Verfiers {
+			pub, err := cryptogo.Hex2Bytes(verfiers.Publickey)
+			if err != nil {
+				logger.Fatalf("验证者公钥格式错误")
+			}
+			zeroBlock.Verifiers = append(zeroBlock.Verifiers, &model.Verifier{PublickKey: pub, SeqNum: int32(i)})
+			if cfg.ConsensusCfg.Publickey == verfiers.Publickey {
+				pri, _ := cryptogo.Hex2Bytes(cfg.ConsensusCfg.PriVateKey)
+				ws.CurVerfier = &model.Verifier{PublickKey: pub, PrivateKey: pri, SeqNum: 0}
+				ws.VerifierNo = i
+			}
+		}
+
 		ws.SetGenesis(&zeroBlock)
 		ws.SetValue(0, "", "genesis", zeroBlock.Verifiers)
 		ws.UpdateLastWorldState()
 
-		pbft, err := consensus.New(ws, txPool, switcher)
+		pbft, err := consensus.New(ws, txPool, switcher, cfg)
 		if err != nil {
 			logger.Fatalf("读取配置文件发生错误 err: %v", err)
 		}
 		consen = pbft
-		// cfg.ConsensusCfg.Publickey
-		// cfg.ConsensusCfg.PriVateKey
 	} else {
+		logger.Infof("读取到本地创世区块, 本地配置文件某些配置项可能会被覆盖")
 		ws.Verifiers = genesis.Verifiers
 		isVerfier := false
 		for i := range ws.Verifiers {
@@ -100,7 +96,7 @@ func New() *PBFTNode {
 			logger.Infof("当前节点不是验证者, 作为普通节点启动")
 		}
 
-		pbft, err := consensus.New(ws, txPool, switcher)
+		pbft, err := consensus.New(ws, txPool, switcher, cfg)
 		if err != nil {
 			logger.Fatalf("读取配置文件发生错误 err: %v", err)
 		}
@@ -150,29 +146,6 @@ func (node *PBFTNode) Run() {
 	go node.chain.Start()
 	// 启动交易池
 	go node.tx.Start()
-
-	curBlock := 0
-	go func() {
-		for {
-			time.Sleep(1000 * time.Millisecond)
-			if node.consensusEngine.StopFlag == false && node.consensusEngine.CurrentState() == model.States_NotStartd && node.ws.BlockNum >= uint64(curBlock) {
-				newMsg := model.PbftGenericMessage{
-					Info: &model.PbftMessageInfo{MsgType: model.MessageType_NewBlockProposal,
-						View: node.ws.View, SeqNum: node.ws.BlockNum + 1,
-						SignerId: node.ws.CurVerfier.PublickKey,
-						Sign:     nil,
-					},
-				}
-				// 签名
-				signedMsg, err := node.consensusEngine.SignMsg(model.NewPbftMessage(&newMsg))
-				if err != nil {
-					logger.Errorf("新区块提议消息签名失败, err: %v", err)
-					continue
-				}
-				node.consensusEngine.Msgs.InsertMsg(signedMsg)
-			}
-		}
-	}()
 
 	select {}
 }

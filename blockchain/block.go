@@ -66,7 +66,7 @@ func (bc *BlockChain) Start() error {
 			bc.consensusEngine.CommitBlock(block)
 			bc.pool.RemoveBlock(block)
 		case <-bc.pool.startEngine:
-			logger.Debugf("区块高度追上最高节点, 启动共识")
+			// logger.Debugf("区块高度追上最高节点, 启动共识")
 			bc.consensusEngine.Start()
 		case <-bc.pool.stopEngine:
 			logger.Debugf("区块高度落后, 需要停止共识")

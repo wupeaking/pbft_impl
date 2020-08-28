@@ -1,4 +1,4 @@
-package node
+package config
 
 import (
 	"encoding/json"
@@ -35,7 +35,11 @@ type ConsensusCfg struct {
 		Publickey  string `json:"publicKey" yaml:"publicKey"`
 		PriVateKey string `json:"privateKey" yaml:"privateKey"`
 	} `json:"verfiers" yaml:"verfiers"`
-	Timeout int `json:"timeout" yaml:"timeout"`
+	Timeout     int `json:"timeout" yaml:"timeout"`
+	Coordinator struct {
+		Publickey  string `json:"publicKey" yaml:"publicKey"`
+		PriVateKey string `json:"privateKey" yaml:"privateKey"`
+	} `json:"coordinator"`
 }
 
 type TxCfg struct {

@@ -17,7 +17,10 @@
     },
     "network":{
         "netMode": "http",
-        "localAddr": "127.0.0.1:29876",
+        "localAddr": "127.0.0.1:19876",
+        "nodeAddrs": [
+            "http://127.0.0.1:29876"
+        ],
         "publicKey": "0xc4024ffd0b42495f49002b5da606512aee341c53e43a641b7d8efac8e29f6ed2d5c6449fe4343f41c5216a84ea9dd43e07daeeadb38556bb19527ce699394cd7",
         "privateKey": "0xf25ccbf8a1bb36594d5f63e9564ca4c5d965ccf8b418e8717f2f68b600cf6a34"
     },
