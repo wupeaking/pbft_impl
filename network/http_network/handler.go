@@ -81,11 +81,14 @@ func (hn *HTTPNetWork) txHandler(w http.ResponseWriter, r *http.Request) {
 
 func (hn *HTTPNetWork) commonHander(w http.ResponseWriter, r *http.Request) {
 	content, err := ioutil.ReadAll(r.Body)
+	// logger.Debugf("收到请求 url: %s, content: %s", r.RequestURI, string(content))
 	if err != nil {
+		logger.Debugf("读取请求内容出错 %s", err.Error())
 		return
 	}
 	var revMsg network.BroadcastMsg
-	if json.Unmarshal(content, &revMsg) != nil {
+	if err := json.Unmarshal(content, &revMsg); err != nil {
+		logger.Debugf("解码请求内容出错 %s", err.Error())
 		return
 	}
 	peer := network.Peer{

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"time"
 
@@ -114,9 +115,11 @@ func main() {
 		verifiers = append(verifiers, &model.Verifier{PublickKey: pub, SeqNum: int32(i)})
 	}
 	ws.VerifierNo = -1
+	ws.Verifiers = verifiers
 
 	// 启动P2P
 	switcher := http_network.New(cfg.NodeAddrs, cfg.LocalAddr, cfg.NetworkCfg.Publickey)
+	switcher.Start()
 	pbft, err := consensus.New(ws, nil, switcher, cfg)
 	if err != nil {
 		logger.Fatalf("启动共识引擎出错 err: %v", err)
@@ -150,8 +153,8 @@ func (cd *Coordinator) msgOnReceive(modelID string, msgBytes []byte, p *network.
 	switch msgPkg.MsgType {
 	case model.BroadcastMsgType_send_specific_block:
 		// 表示对方向本节点发送区块信息
-		var blockResp *model.BlockResponse
-		if proto.Unmarshal(msgPkg.Msg, blockResp) != nil {
+		var blockResp model.BlockResponse
+		if proto.Unmarshal(msgPkg.Msg, &blockResp) != nil {
 			return
 		}
 		if blockResp.RequestType == model.BlockRequestType_only_header {
@@ -190,12 +193,31 @@ func (cd *Coordinator) requestBlockHeight() {
 }
 
 func (cd *Coordinator) requestNewBlockProposal() {
-	request := model.PbftGenericMessage{
-		Info: &model.PbftMessageInfo{
-			MsgType: model.MessageType_NewBlockProposal,
-		},
+	msgInfo := &model.PbftMessageInfo{
+		MsgType: model.MessageType_NewBlockProposal,
+		SeqNum:  0,
+		View:    0,
 	}
-	// todo:: 需要签名
+	content, _ := proto.Marshal(msgInfo)
+	sh := sha256.New()
+	sh.Write(content)
+	hash := sh.Sum(nil)
+	privKey, err := cryptogo.LoadPrivateKey(cd.cfg.Coordinator.PriVateKey)
+	if err != nil {
+		logger.Errorf("加载协调者私钥失败, err: %v", err)
+		return
+	}
+	sign, err := cryptogo.Sign(privKey, hash)
+	if err != nil {
+		logger.Errorf("签名消息失败, err: %v", err)
+		return
+	}
+	s, _ := cryptogo.Hex2Bytes(sign)
+	msgInfo.Sign = s
+
+	request := model.PbftGenericMessage{
+		Info: msgInfo,
+	}
 	body, _ := proto.Marshal(&request)
 	msg := network.BroadcastMsg{
 		// 发给对方节点的 consensus模块

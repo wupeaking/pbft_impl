@@ -32,8 +32,17 @@ func (ws *WroldState) GetBlockMeta() (*model.BlockMeta, error) {
 func (ws *WroldState) GetBlock(key interface{}) (*model.PbftBlock, error) {
 	switch x := key.(type) {
 	case int, uint, int64, uint64:
-		v := reflect.ValueOf(key).Uint()
-		return ws.db.GetBlockByNum(v)
+		switch reflect.ValueOf(key).Kind() {
+		case reflect.Int:
+			return ws.db.GetBlockByNum(uint64(key.(int)))
+		case reflect.Uint:
+			return ws.db.GetBlockByNum(uint64(key.(uint)))
+		case reflect.Int64:
+			return ws.db.GetBlockByNum(uint64(key.(int64)))
+		case reflect.Uint64:
+			return ws.db.GetBlockByNum(uint64(key.(uint64)))
+		}
+
 	case string:
 		return ws.db.GetBlockByID(x)
 	case []byte:

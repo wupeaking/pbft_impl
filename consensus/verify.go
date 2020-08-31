@@ -42,6 +42,9 @@ func (pbft *PBFT) VerfifyMsg(msg *model.PbftMessage) bool {
 }
 
 func (pbft *PBFT) verfifyMsgInfo(msgInfo *model.PbftMessageInfo) bool {
+	if msgInfo.MsgType == model.MessageType_NewBlockProposal {
+		return pbft.verfifyBlockProposalMsg(msgInfo)
+	}
 	if !pbft.IsVaildVerifier(msgInfo.SignerId) {
 		return false
 	}
@@ -51,6 +54,27 @@ func (pbft *PBFT) verfifyMsgInfo(msgInfo *model.PbftMessageInfo) bool {
 		return false
 	}
 
+	info := model.PbftMessageInfo{
+		MsgType: msgInfo.MsgType,
+		View:    msgInfo.View,
+		SeqNum:  msgInfo.SeqNum,
+	}
+	content, _ := proto.Marshal(&info)
+	sh := sha256.New()
+	sh.Write(content)
+	hash := sh.Sum(nil)
+	return cryptogo.VerifySign(pubKey, fmt.Sprintf("0x%x", msgInfo.Sign), fmt.Sprintf("0x%x", hash))
+}
+
+func (pbft *PBFT) verfifyBlockProposalMsg(msgInfo *model.PbftMessageInfo) bool {
+	pub, _ := cryptogo.Hex2Bytes(pbft.cfg.Coordinator.Publickey)
+	if bytes.Compare(pub, msgInfo.SignerId) != 0 {
+		return false
+	}
+	pubKey, err := cryptogo.LoadPublicKey(pbft.cfg.Coordinator.Publickey)
+	if err != nil {
+		return false
+	}
 	info := model.PbftMessageInfo{
 		MsgType: msgInfo.MsgType,
 		View:    msgInfo.View,

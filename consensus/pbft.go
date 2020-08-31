@@ -218,11 +218,11 @@ func (pbft *PBFT) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer) {
 	if json.Unmarshal(msgBytes, &msgPkg) != nil {
 		return
 	}
-	var pbftMsg *model.PbftMessage
-	if proto.Unmarshal(msgPkg.Msg, pbftMsg) != nil {
+	var pbftMsg model.PbftMessage
+	if proto.Unmarshal(msgPkg.Msg, &pbftMsg) != nil {
 		return
 	}
-	pbft.Msgs.InsertMsg(pbftMsg)
+	pbft.Msgs.InsertMsg(&pbftMsg)
 }
 
 func (pbft *PBFT) Start() {
