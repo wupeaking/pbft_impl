@@ -52,13 +52,17 @@ type BlockHeight struct {
 	verifiers    map[string]bool
 	verifiersNum int
 	trigger      bool
+	timeout      *time.Timer
 }
 
 func NewBlockHeight(verifiersNum int) *BlockHeight {
+	t := time.NewTimer(10 * time.Second)
+	t.Stop()
 	return &BlockHeight{
 		height:       0,
 		verifiers:    make(map[string]bool),
 		verifiersNum: verifiersNum,
+		timeout:      t,
 	}
 }
 
@@ -69,6 +73,7 @@ func (bh *BlockHeight) UpdateHeight(h uint64, verifier string) bool {
 		bh.height = h
 		bh.verifiers = make(map[string]bool)
 		bh.trigger = false
+		bh.timeout.Reset(10 * time.Second)
 		return false
 
 	}
@@ -77,11 +82,23 @@ func (bh *BlockHeight) UpdateHeight(h uint64, verifier string) bool {
 		// 要求还未触发 并且有2/3的节点返回
 		if !bh.trigger && len(bh.verifiers) >= bh.MinNodeNum() {
 			bh.trigger = true
+			bh.timeout.Reset(10 * time.Second)
 			return true
 		}
 		return false
 	}
+	bh.timeout.Reset(10 * time.Second)
 	return false
+}
+
+func (bh *BlockHeight) TimeoutDemon() {
+	for {
+		<-bh.timeout.C
+		// if !bh.timeout.Stop() {
+		// }
+		bh.trigger = false
+		logger.Warnf("提议新区块超时 高度: %d", bh.height)
+	}
 }
 
 func (bh *BlockHeight) MinNodeNum() int {
@@ -130,6 +147,7 @@ func main() {
 	switcher.RegisterOnReceive("consensus", coordinator.msgOnReceive)
 
 	internalTicker := time.NewTicker(5 * time.Second)
+	go coordinator.maxHeight.TimeoutDemon()
 
 	for {
 		select {
@@ -163,10 +181,9 @@ func (cd *Coordinator) msgOnReceive(modelID string, msgBytes []byte, p *network.
 				return
 			}
 			pub, _ := cryptogo.Hex2Bytes(p.ID)
-			cd.pbft.IsVaildVerifier(pub)
-			if cd.maxHeight.UpdateHeight(blockResp.Block.BlockNum, p.ID) {
+			// cd.pbft.IsVaildVerifier(pub)
+			if cd.pbft.IsVaildVerifier(pub) && cd.maxHeight.UpdateHeight(blockResp.Block.BlockNum, p.ID) {
 				// 发起新区块提议
-				// todo::: 暂时还没考虑当某个主节点down机 超时之后怎么办
 				select {
 				case cd.requestNewBlock <- struct{}{}:
 				default:
