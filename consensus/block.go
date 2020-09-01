@@ -47,7 +47,7 @@ func (pbft *PBFT) CommitBlock(block *model.PbftBlock) error {
 	pbft.ws.SetValue(block.BlockNum, pbft.ws.BlockID, string(block.BlockId), nil)
 	pbft.ws.InsertBlock(block)
 	pbft.ws.UpdateLastWorldState()
-	pbft.logger.Infof("提交一个新区块")
+	pbft.logger.Infof("提交一个新区块, 区块高度为: %d", block.GetBlockNum())
 	pbft.sm.receivedBlock = nil
 	return nil
 }

@@ -388,3 +388,73 @@
 14:13:57.848377 version@stat F·[0 1] S·33KiB[0B 33KiB] Sc·[0.00 0.00]
 14:13:57.859426 db@janitor F·3 G·0
 14:13:57.859639 db@open done T·12.437545ms
+=============== Aug 31, 2020 (CST) ===============
+15:27:35.444412 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+15:27:35.445582 version@stat F·[0 1] S·33KiB[0B 33KiB] Sc·[0.00 0.00]
+15:27:35.445619 db@open opening
+15:27:35.445711 journal@recovery F·1
+15:27:35.446149 journal@recovery recovering @87
+15:27:35.446672 version@stat F·[0 1] S·33KiB[0B 33KiB] Sc·[0.00 0.00]
+15:27:35.458033 db@janitor F·3 G·0
+15:27:35.458081 db@open done T·12.443975ms
+=============== Aug 31, 2020 (CST) ===============
+15:30:30.634996 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+15:30:30.635999 version@stat F·[0 1] S·33KiB[0B 33KiB] Sc·[0.00 0.00]
+15:30:30.636048 db@open opening
+15:30:30.636176 journal@recovery F·1
+15:30:30.636769 journal@recovery recovering @89
+15:30:30.638146 version@stat F·[0 1] S·33KiB[0B 33KiB] Sc·[0.00 0.00]
+15:30:30.656475 db@janitor F·3 G·0
+15:30:30.658700 db@open done T·22.613172ms
+=============== Aug 31, 2020 (CST) ===============
+15:38:24.108655 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+15:38:24.109913 version@stat F·[0 1] S·33KiB[0B 33KiB] Sc·[0.00 0.00]
+15:38:24.109956 db@open opening
+15:38:24.110095 journal@recovery F·1
+15:38:24.110574 journal@recovery recovering @91
+15:38:24.111563 version@stat F·[0 1] S·33KiB[0B 33KiB] Sc·[0.00 0.00]
+15:38:24.125376 db@janitor F·3 G·0
+15:38:24.125842 db@open done T·15.857758ms
+=============== Aug 31, 2020 (CST) ===============
+15:39:26.753520 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+15:39:26.754733 version@stat F·[0 1] S·33KiB[0B 33KiB] Sc·[0.00 0.00]
+15:39:26.754806 db@open opening
+15:39:26.755016 journal@recovery F·1
+15:39:26.755756 journal@recovery recovering @93
+15:39:26.759777 version@stat F·[0 1] S·33KiB[0B 33KiB] Sc·[0.00 0.00]
+15:39:26.773409 db@janitor F·3 G·0
+15:39:26.773494 db@open done T·18.653151ms
+=============== Aug 31, 2020 (CST) ===============
+15:49:08.668377 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+15:49:08.674959 version@stat F·[0 1] S·33KiB[0B 33KiB] Sc·[0.00 0.00]
+15:49:08.675045 db@open opening
+15:49:08.675255 journal@recovery F·1
+15:49:08.684106 journal@recovery recovering @95
+15:49:08.686145 version@stat F·[0 1] S·33KiB[0B 33KiB] Sc·[0.00 0.00]
+15:49:08.708768 db@janitor F·3 G·0
+15:49:08.716285 db@open done T·41.182856ms
+=============== Sep 1, 2020 (CST) ===============
+21:36:35.382451 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+21:36:35.383332 version@stat F·[0 1] S·33KiB[0B 33KiB] Sc·[0.00 0.00]
+21:36:35.383361 db@open opening
+21:36:35.383444 journal@recovery F·1
+21:36:35.383846 journal@recovery recovering @97
+21:36:35.384409 version@stat F·[0 1] S·33KiB[0B 33KiB] Sc·[0.00 0.00]
+21:36:35.400944 db@janitor F·3 G·0
+21:36:35.400987 db@open done T·17.609491ms
+=============== Sep 1, 2020 (CST) ===============
+22:01:15.744738 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+22:01:15.745697 version@stat F·[0 1] S·33KiB[0B 33KiB] Sc·[0.00 0.00]
+22:01:15.745745 db@open opening
+22:01:15.745852 journal@recovery F·1
+22:01:15.746454 journal@recovery recovering @99
+22:01:15.749626 memdb@flush created L0@101 N·16 S·1KiB "106,v222":"f66..f6c,v233"
+22:01:15.750176 version@stat F·[1 1] S·35KiB[1KiB 33KiB] Sc·[0.25 0.00]
+22:01:15.762018 db@janitor F·4 G·0
+22:01:15.762085 db@open done T·16.32191ms
+22:01:15.795611 table@compaction L0·1 -> L1·1 S·35KiB Q·237
+22:01:15.800676 table@build created L1@104 N·230 S·35KiB "0,v1":"fd2..8af,v155"
+22:01:15.800788 version@stat F·[0 1] S·35KiB[0B 35KiB] Sc·[0.00 0.00]
+22:01:15.803302 table@compaction committed F-1 S+246B Ke·0 D·1 T·7.533391ms
+22:01:15.806280 table@remove removed @101
+22:01:15.807772 table@remove removed @18

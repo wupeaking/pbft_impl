@@ -118,7 +118,7 @@ func main() {
 	ws.Verifiers = verifiers
 
 	// 启动P2P
-	switcher := http_network.New(cfg.NodeAddrs, cfg.LocalAddr, cfg.NetworkCfg.Publickey)
+	switcher := http_network.New(cfg.NodeAddrs, cfg.LocalAddr, cfg.NetworkCfg.Publickey, cfg)
 	switcher.Start()
 	pbft, err := consensus.New(ws, nil, switcher, cfg)
 	if err != nil {
@@ -193,6 +193,8 @@ func (cd *Coordinator) requestBlockHeight() {
 }
 
 func (cd *Coordinator) requestNewBlockProposal() {
+	pub, _ := cryptogo.Hex2Bytes(cd.cfg.Coordinator.Publickey)
+
 	msgInfo := &model.PbftMessageInfo{
 		MsgType: model.MessageType_NewBlockProposal,
 		SeqNum:  0,
@@ -214,11 +216,14 @@ func (cd *Coordinator) requestNewBlockProposal() {
 	}
 	s, _ := cryptogo.Hex2Bytes(sign)
 	msgInfo.Sign = s
+	msgInfo.SignerId = pub
 
-	request := model.PbftGenericMessage{
+	gm := model.PbftGenericMessage{
 		Info: msgInfo,
 	}
-	body, _ := proto.Marshal(&request)
+	request := model.NewPbftMessage(&gm)
+
+	body, _ := proto.Marshal(request)
 	msg := network.BroadcastMsg{
 		// 发给对方节点的 consensus模块
 		ModelID: "consensus",

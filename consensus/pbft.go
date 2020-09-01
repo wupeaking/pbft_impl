@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"encoding/json"
+	"strings"
 	"sync"
 	"time"
 
@@ -87,7 +88,18 @@ func New(ws *world_state.WroldState, txPool *transaction.TxPool, switcher networ
 		DisableColors: true,
 		FullTimestamp: true,
 	})
-	l.SetLevel(log.DebugLevel)
+	switch strings.ToLower(cfg.ConsensusCfg.LogLevel) {
+	case "debug":
+		l.SetLevel(log.DebugLevel)
+	case "warn":
+		l.SetLevel(log.WarnLevel)
+	case "info":
+		l.SetLevel(log.InfoLevel)
+	case "error":
+		l.SetLevel(log.ErrorLevel)
+	default:
+		l.SetLevel(log.InfoLevel)
+	}
 	pbft.logger = l.WithField("module", "node")
 
 	pbft.ws = ws

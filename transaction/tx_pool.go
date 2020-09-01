@@ -2,9 +2,11 @@ package transaction
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	log "github.com/sirupsen/logrus"
+	"github.com/wupeaking/pbft_impl/common/config"
 	"github.com/wupeaking/pbft_impl/model"
 	"github.com/wupeaking/pbft_impl/network"
 )
@@ -26,7 +28,19 @@ type TxPool struct {
 	switcher network.SwitcherI
 }
 
-func NewTxPool(switcher network.SwitcherI) *TxPool {
+func NewTxPool(switcher network.SwitcherI, cfg *config.Configure) *TxPool {
+	switch strings.ToLower(cfg.TxCfg.LogLevel) {
+	case "debug":
+		logger.Logger.SetLevel(log.DebugLevel)
+	case "warn":
+		logger.Logger.SetLevel(log.WarnLevel)
+	case "info":
+		logger.Logger.SetLevel(log.InfoLevel)
+	case "error":
+		logger.Logger.SetLevel(log.ErrorLevel)
+	default:
+		logger.Logger.SetLevel(log.InfoLevel)
+	}
 	return &TxPool{
 		switcher: switcher,
 	}

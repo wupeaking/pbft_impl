@@ -38,8 +38,8 @@ func New() *PBFTNode {
 	if err != nil {
 		logger.Fatalf("读取配置文件发生错误 err: %v", err)
 	}
-	switcher := http_network.New(cfg.NodeAddrs, cfg.LocalAddr, cfg.NetworkCfg.Publickey)
-	txPool := transaction.NewTxPool(switcher)
+	switcher := http_network.New(cfg.NodeAddrs, cfg.LocalAddr, cfg.NetworkCfg.Publickey, cfg)
+	txPool := transaction.NewTxPool(switcher, cfg)
 
 	var consen *consensus.PBFT
 

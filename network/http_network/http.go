@@ -3,11 +3,13 @@ package http_network
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/parnurzeal/gorequest"
 	log "github.com/sirupsen/logrus"
+	"github.com/wupeaking/pbft_impl/common/config"
 	"github.com/wupeaking/pbft_impl/model"
 	"github.com/wupeaking/pbft_impl/network"
 )
@@ -39,7 +41,19 @@ type HTTPMsg struct {
 	*network.Peer
 }
 
-func New(nodeAddrs []string, local string, nodeID string) network.SwitcherI {
+func New(nodeAddrs []string, local string, nodeID string, cfg *config.Configure) network.SwitcherI {
+	switch strings.ToLower(cfg.NetworkCfg.LogLevel) {
+	case "debug":
+		logger.Logger.SetLevel(log.DebugLevel)
+	case "warn":
+		logger.Logger.SetLevel(log.WarnLevel)
+	case "info":
+		logger.Logger.SetLevel(log.InfoLevel)
+	case "error":
+		logger.Logger.SetLevel(log.ErrorLevel)
+	default:
+		logger.Logger.SetLevel(log.InfoLevel)
+	}
 	return &HTTPNetWork{
 		Addrs:        nodeAddrs,
 		LocalAddress: local,

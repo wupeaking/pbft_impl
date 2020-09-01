@@ -376,3 +376,75 @@
 14:13:57.866919 version@stat F·[3] S·2KiB[2KiB] Sc·[0.75]
 14:13:57.878065 db@janitor F·5 G·0
 14:13:57.878101 db@open done T·14.698958ms
+=============== Aug 31, 2020 (CST) ===============
+15:27:35.458249 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+15:27:35.459033 version@stat F·[3] S·2KiB[2KiB] Sc·[0.75]
+15:27:35.459065 db@open opening
+15:27:35.459160 journal@recovery F·1
+15:27:35.461522 journal@recovery recovering @85
+15:27:35.461961 version@stat F·[3] S·2KiB[2KiB] Sc·[0.75]
+15:27:35.476466 db@janitor F·5 G·0
+15:27:35.476505 db@open done T·17.427545ms
+=============== Aug 31, 2020 (CST) ===============
+15:30:30.658882 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+15:30:30.659564 version@stat F·[3] S·2KiB[2KiB] Sc·[0.75]
+15:30:30.659601 db@open opening
+15:30:30.659727 journal@recovery F·1
+15:30:30.662047 journal@recovery recovering @87
+15:30:30.662590 version@stat F·[3] S·2KiB[2KiB] Sc·[0.75]
+15:30:30.676356 db@janitor F·5 G·0
+15:30:30.676400 db@open done T·16.783415ms
+=============== Aug 31, 2020 (CST) ===============
+15:38:24.126125 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+15:38:24.127049 version@stat F·[3] S·2KiB[2KiB] Sc·[0.75]
+15:38:24.127090 db@open opening
+15:38:24.127218 journal@recovery F·1
+15:38:24.130402 journal@recovery recovering @89
+15:38:24.130936 version@stat F·[3] S·2KiB[2KiB] Sc·[0.75]
+15:38:24.145133 db@janitor F·5 G·0
+15:38:24.145184 db@open done T·18.076043ms
+=============== Aug 31, 2020 (CST) ===============
+15:39:26.773860 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+15:39:26.775551 version@stat F·[3] S·2KiB[2KiB] Sc·[0.75]
+15:39:26.775634 db@open opening
+15:39:26.775907 journal@recovery F·1
+15:39:26.781430 journal@recovery recovering @91
+15:39:26.785111 version@stat F·[3] S·2KiB[2KiB] Sc·[0.75]
+15:39:26.798691 db@janitor F·5 G·0
+15:39:26.798748 db@open done T·23.078568ms
+=============== Aug 31, 2020 (CST) ===============
+15:49:08.716569 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+15:49:08.717840 version@stat F·[3] S·2KiB[2KiB] Sc·[0.75]
+15:49:08.717894 db@open opening
+15:49:08.718092 journal@recovery F·1
+15:49:08.729139 journal@recovery recovering @93
+15:49:08.738754 version@stat F·[3] S·2KiB[2KiB] Sc·[0.75]
+15:49:08.749686 db@janitor F·5 G·0
+15:49:08.753299 db@open done T·35.375027ms
+=============== Sep 1, 2020 (CST) ===============
+21:36:35.401115 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+21:36:35.401830 version@stat F·[3] S·2KiB[2KiB] Sc·[0.75]
+21:36:35.401856 db@open opening
+21:36:35.401952 journal@recovery F·1
+21:36:35.404185 journal@recovery recovering @95
+21:36:35.404832 version@stat F·[3] S·2KiB[2KiB] Sc·[0.75]
+21:36:35.419382 db@janitor F·5 G·0
+21:36:35.419428 db@open done T·17.561067ms
+=============== Sep 1, 2020 (CST) ===============
+22:01:15.762334 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+22:01:15.762949 version@stat F·[3] S·2KiB[2KiB] Sc·[0.75]
+22:01:15.762980 db@open opening
+22:01:15.763077 journal@recovery F·1
+22:01:15.765553 journal@recovery recovering @97
+22:01:15.767153 memdb@flush created L0@99 N·8 S·350B "blo..eta,v120":"blo..eta,v113"
+22:01:15.767515 version@stat F·[4] S·3KiB[3KiB] Sc·[1.00]
+22:01:15.778582 db@janitor F·6 G·0
+22:01:15.778629 db@open done T·15.634091ms
+22:01:15.778717 table@compaction L0·4 -> L1·0 S·3KiB Q·121
+22:01:15.782068 table@build created L1@102 N·1 S·239B "blo..eta,v120":"blo..eta,v120"
+22:01:15.782164 version@stat F·[0 1] S·239B[0B 239B] Sc·[0.00 0.00]
+22:01:15.791387 table@compaction committed F-3 S-2KiB Ke·0 D·116 T·12.539648ms
+22:01:15.793670 table@remove removed @99
+22:01:15.794843 table@remove removed @14
+22:01:15.798130 table@remove removed @11
+22:01:15.798793 table@remove removed @2

@@ -40,10 +40,12 @@ type ConsensusCfg struct {
 		Publickey  string `json:"publicKey" yaml:"publicKey"`
 		PriVateKey string `json:"privateKey" yaml:"privateKey"`
 	} `json:"coordinator"`
+	LogLevel string `json:"logLevel"`
 }
 
 type TxCfg struct {
-	MaxTxNum int `json:"maxTxNum" yaml:"maxTxNum"` // 本地最大交易池数量
+	MaxTxNum int    `json:"maxTxNum" yaml:"maxTxNum"` // 本地最大交易池数量
+	LogLevel string `json:"logLevel"`
 }
 
 type NetworkCfg struct {
@@ -52,10 +54,12 @@ type NetworkCfg struct {
 	NodeAddrs  []string `json:"nodeAddrs" yaml:"nodeAddrs"`   // 节点地址列表
 	Publickey  string   `json:"publicKey" yaml:"publicKey"`   // 节点ID
 	PriVateKey string   `json:"privateKey" yaml:"privateKey"` // 节点私钥
+	LogLevel   string   `json:"logLevel"`
 }
 
 type DBCfg struct {
 	StorageEngine string `json:"storageEngine" yaml:"storageEngine"` // 暂时只有leveldb
+	LogLevel      string `json:"logLevel"`
 }
 
 type Configure struct {

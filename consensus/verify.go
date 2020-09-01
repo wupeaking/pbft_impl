@@ -278,6 +278,7 @@ func (pbft *PBFT) signMsgInfo(msgInfo *model.PbftMessageInfo) (*model.PbftMessag
 		return nil, err
 	}
 	msgInfo.Sign = s
+	msgInfo.SignerId = pbft.ws.CurVerfier.PublickKey
 	return msgInfo, nil
 }
 
@@ -308,6 +309,7 @@ func (pbft *PBFT) signBlock(blk *model.PbftBlock) (*model.PbftBlock, error) {
 	blk.BlockId = hex.EncodeToString(hash)
 
 	if pbft.IsPrimaryVerfier() {
+		blk.SignerId = pbft.ws.CurVerfier.PublickKey
 		blk.Sign = s
 	} else {
 		blk.SignPairs = append(blk.SignPairs, &model.SignPairs{
