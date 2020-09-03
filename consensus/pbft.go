@@ -64,6 +64,7 @@ func (mq *MsgQueue) GetMsg() *model.PbftMessage {
 	if !ok {
 		return nil
 	}
+	mq.l.Remove(0)
 	return v.(*model.PbftMessage)
 }
 
@@ -234,6 +235,10 @@ func (pbft *PBFT) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer) {
 	if proto.Unmarshal(msgPkg.Msg, &pbftMsg) != nil {
 		return
 	}
+	// if gm := pbftMsg.GetGeneric(); gm != nil {
+	// 	pbft.logger.Infof("插入Msg的高度: %d", gm.Info.SeqNum)
+	// }
+
 	pbft.Msgs.InsertMsg(&pbftMsg)
 }
 

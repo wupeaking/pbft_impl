@@ -30,20 +30,30 @@ func init() {
 }
 
 type Coordinator struct {
-	switcher        network.SwitcherI
-	cfg             *config.Configure
-	requestNewBlock chan struct{}
-	maxHeight       *BlockHeight
-	pbft            *consensus.PBFT
+	switcher          network.SwitcherI
+	cfg               *config.Configure
+	requestNewBlock   chan uint64
+	maxHeight         *BlockHeight
+	pbft              *consensus.PBFT
+	curRequestProcess *struct {
+		blockNum    uint64
+		requestTime time.Time
+		requestCnt  uint64
+	}
 }
 
 func New(pbft *consensus.PBFT, switcher network.SwitcherI, cfg *config.Configure) *Coordinator {
 	return &Coordinator{
 		switcher:        switcher,
 		cfg:             cfg,
-		requestNewBlock: make(chan struct{}, 1),
+		requestNewBlock: make(chan uint64, 1),
 		maxHeight:       NewBlockHeight(len(cfg.ConsensusCfg.Verfiers)),
 		pbft:            pbft,
+		curRequestProcess: &struct {
+			blockNum    uint64
+			requestTime time.Time
+			requestCnt  uint64
+		}{},
 	}
 }
 
@@ -73,21 +83,21 @@ func (bh *BlockHeight) UpdateHeight(h uint64, verifier string) bool {
 		bh.height = h
 		bh.verifiers = make(map[string]bool)
 		bh.trigger = false
-		bh.timeout.Reset(10 * time.Second)
+		// bh.timeout.Reset(10 * time.Second)
 		return false
 
 	}
 	if h == bh.height {
 		bh.verifiers[verifier] = true
 		// 要求还未触发 并且有2/3的节点返回
-		if !bh.trigger && len(bh.verifiers) >= bh.MinNodeNum() {
+		if /*!bh.trigger &&*/ len(bh.verifiers) >= bh.MinNodeNum() {
 			bh.trigger = true
-			bh.timeout.Reset(10 * time.Second)
+			// bh.timeout.Reset(10 * time.Second)
 			return true
 		}
 		return false
 	}
-	bh.timeout.Reset(10 * time.Second)
+	// bh.timeout.Reset(10 * time.Second)
 	return false
 }
 
@@ -147,16 +157,16 @@ func main() {
 	switcher.RegisterOnReceive("consensus", coordinator.msgOnReceive)
 
 	internalTicker := time.NewTicker(5 * time.Second)
-	go coordinator.maxHeight.TimeoutDemon()
+	// go coordinator.maxHeight.TimeoutDemon()
 
 	for {
 		select {
 		case <-internalTicker.C:
 			// 广播 获取最新区块高度
 			coordinator.requestBlockHeight()
-		case <-coordinator.requestNewBlock:
-			logger.Infof("请求新区块")
-			coordinator.requestNewBlockProposal()
+		case num := <-coordinator.requestNewBlock:
+			logger.Infof("请求新区块 高度: %d", num)
+			coordinator.requestNewBlockProposal(num)
 		}
 
 	}
@@ -182,12 +192,46 @@ func (cd *Coordinator) msgOnReceive(modelID string, msgBytes []byte, p *network.
 			}
 			pub, _ := cryptogo.Hex2Bytes(p.ID)
 			// cd.pbft.IsVaildVerifier(pub)
+			logger.Infof("接收到区块高度消息")
 			if cd.pbft.IsVaildVerifier(pub) && cd.maxHeight.UpdateHeight(blockResp.Block.BlockNum, p.ID) {
 				// 发起新区块提议
-				select {
-				case cd.requestNewBlock <- struct{}{}:
-				default:
+				// 检查发起的区块高度是否已经发起过
+				if blockResp.Block.BlockNum > cd.curRequestProcess.blockNum {
+					logger.Debugf("落后区块高度 区块高度为: %d 进度: %d", blockResp.Block.BlockNum, cd.curRequestProcess.blockNum)
+					// 追上进度
+					cd.curRequestProcess.blockNum = blockResp.Block.BlockNum
+					cd.curRequestProcess.requestCnt = 0
+					return
 				}
+				if blockResp.Block.BlockNum == cd.curRequestProcess.blockNum {
+					logger.Debugf("落后区当前区块高度已经和请求的区块高度一致了块高度 区块高度为: %d", blockResp.Block.BlockNum)
+
+					// 当前区块高度已经和请求的区块高度一致了 可以尝试发起更高的区块高度了
+					cd.curRequestProcess.blockNum++
+					cd.curRequestProcess.requestCnt = 1
+					cd.curRequestProcess.requestTime = time.Now()
+					select {
+					case cd.requestNewBlock <- blockResp.Block.BlockNum + 1:
+					default:
+					}
+				}
+
+				if blockResp.Block.BlockNum < cd.curRequestProcess.blockNum {
+					logger.Debugf("当前区块高度已经落后请求的区块高度 区块高度为: %d, 请求进度: %d", blockResp.Block.BlockNum, cd.curRequestProcess.blockNum)
+					// 说明请求生产的新区块  2/3的节点都已达到
+					// 判断是否请求已经超时
+					if time.Since(cd.curRequestProcess.requestTime).Seconds() > 5 {
+						// 尝试再次请求生产新区块
+						cd.curRequestProcess.requestCnt++
+						cd.curRequestProcess.requestTime = time.Now()
+						select {
+						case cd.requestNewBlock <- blockResp.Block.BlockNum + 1:
+						default:
+						}
+						logger.Warnf("请求生产新区块%d 超时 尝试重新请求 重试次数: %d", blockResp.Block.BlockNum+1, cd.curRequestProcess.requestCnt)
+					}
+				}
+
 			}
 
 		}
@@ -209,12 +253,12 @@ func (cd *Coordinator) requestBlockHeight() {
 	cd.switcher.Broadcast(msg.ModelID, &msg)
 }
 
-func (cd *Coordinator) requestNewBlockProposal() {
+func (cd *Coordinator) requestNewBlockProposal(blockNum uint64) {
 	pub, _ := cryptogo.Hex2Bytes(cd.cfg.Coordinator.Publickey)
 
 	msgInfo := &model.PbftMessageInfo{
 		MsgType: model.MessageType_NewBlockProposal,
-		SeqNum:  0,
+		SeqNum:  blockNum,
 		View:    0,
 	}
 	content, _ := proto.Marshal(msgInfo)

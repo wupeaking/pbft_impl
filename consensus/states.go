@@ -38,6 +38,7 @@ func (pbft *PBFT) appendLogMsg(msg *model.PbftMessage) {
 			view:        content.Info.View,
 			block:       content.Block,
 		})
+		pbft.logger.Warnf("追加日志高度: %d, 日志类型: %s", content.Info.SeqNum, content.Info.GetMsgType())
 		pbft.sm.logMsg[content.Info.SeqNum] = logMsgs
 		return
 	}
@@ -96,6 +97,11 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		if msgType != model.MessageType_NewBlockProposal {
 			pbft.logger.Warnf("当前状态为%s 期待收到新区块提议 但是收到的消息类型为%s",
 				model.States_name[int32(curState)], model.MessageType_name[int32(msgType)])
+			return
+		}
+		if content.Info.SeqNum != pbft.ws.BlockNum+1 {
+			pbft.logger.Warnf("当前状态为%s 收到新区块提议 但是提议的区块高度不满足预期 期待的区块高度为 %d, 收到的区块高度: %d",
+				model.States_name[int32(curState)], pbft.ws.BlockNum+1, content.Info.SeqNum)
 			return
 		}
 
