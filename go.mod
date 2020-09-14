@@ -11,6 +11,9 @@ require (
 	github.com/golang/protobuf v1.4.2
 	github.com/google/btree v1.0.0 // indirect
 	github.com/gorilla/mux v1.7.4
+	github.com/libp2p/go-libp2p v0.11.0 // indirect
+	github.com/libp2p/go-libp2p-core v0.7.0 // indirect
+	github.com/libp2p/go-libp2p-kad-dht v0.10.0 // indirect
 	github.com/montanaflynn/stats v0.6.3 // indirect
 	github.com/parnurzeal/gorequest v0.2.16
 	github.com/pingcap/kvproto v0.0.0-20200803054707-ebd5de15093f // indirect
