@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -18,6 +19,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/wupeaking/pbft_impl/common/config"
 	cryptogo "github.com/wupeaking/pbft_impl/crypto"
+	pbftnet "github.com/wupeaking/pbft_impl/network"
 )
 
 // 使用开源的libp2p实现P2P组件
@@ -45,7 +47,15 @@ type P2PNetWork struct {
 	kademliaDHT    *dht.IpfsDHT
 	routeDiscovery *discovery.RoutingDiscovery
 	sync.RWMutex
-	books map[string]network.Stream
+	books  map[string]*P2PStream
+	recvCB map[string]pbftnet.OnReceive
+}
+
+type P2PStream struct {
+	stream           network.Stream
+	broadcastMsgChan chan *pbftnet.BroadcastMsg
+	closeReadStrem   chan struct{}
+	closeWriteStrem  chan struct{}
 }
 
 func New(cfg *config.Configure) (*P2PNetWork, error) {
@@ -104,7 +114,9 @@ func New(cfg *config.Configure) (*P2PNetWork, error) {
 	// 创建路由表
 	routingDiscovery := discovery.NewRoutingDiscovery(kademliaDHT)
 	p2p.routeDiscovery = routingDiscovery
-	p2p.books = make(map[string]network.Stream)
+
+	p2p.books = make(map[string]*P2PStream)
+	p2p.recvCB = make(map[string]pbftnet.OnReceive)
 
 	return p2p, nil
 }
@@ -161,18 +173,85 @@ func (p2p *P2PNetWork) NodeDiscovery() {
 			logger.Infof("p2p Connection failed: %v\n", err)
 			continue
 		} else {
+			p2pStaeam := &P2PStream{
+				stream:           stream,
+				broadcastMsgChan: make(chan *pbftnet.BroadcastMsg, 0),
+				closeReadStrem:   make(chan struct{}, 1),
+				closeWriteStrem:  make(chan struct{}, 1),
+			}
 			p2p.Lock()
-			p2p.books[peer.ID.String()] = stream
+			p2p.books[peer.ID.String()] = p2pStaeam
 			p2p.Unlock()
-			// 启动goroutine 处理数据
+			go p2p.dataStreamRecv(p2pStaeam)
+			go p2p.dataStreamSend(p2pStaeam)
 		}
 	}
 }
 
 func (p2p *P2PNetWork) streamHandler(stream network.Stream) {
+	p2pStaeam := &P2PStream{
+		stream:           stream,
+		broadcastMsgChan: make(chan *pbftnet.BroadcastMsg, 0),
+		closeReadStrem:   make(chan struct{}, 1),
+		closeWriteStrem:  make(chan struct{}, 1),
+	}
 	p2p.Lock()
-	p2p.books[stream.ID()] = stream
+	p2p.books[stream.ID()] = p2pStaeam
 	p2p.Unlock()
 
-	go p2p.dataStreamRecv(stream)
+	go p2p.dataStreamRecv(p2pStaeam)
+	go p2p.dataStreamSend(p2pStaeam)
+}
+
+// 实现switcher接口
+// 向所有的节点广播消息
+func (p2p *P2PNetWork) Broadcast(modelID string, msg *pbftnet.BroadcastMsg) error {
+	// 向所以已知节点进行广播
+	for id := range p2p.books {
+		p2p.BroadcastToPeer(modelID, msg, &pbftnet.Peer{ID: id})
+	}
+	return nil
+}
+
+// 广播到指定的peer
+func (p2p *P2PNetWork) BroadcastToPeer(modelID string, msg *pbftnet.BroadcastMsg, p *pbftnet.Peer) error {
+	p2pStream, ok := p2p.books[p.ID]
+	if !ok {
+		return fmt.Errorf("p2p node 不存在, id: %s", p.ID)
+	}
+	go func() {
+		select {
+		case p2pStream.broadcastMsgChan <- msg:
+		case <-time.After(1 * time.Minute):
+			logger.Debugf("广播消息到Peer: %s超时", p.ID)
+			return
+		}
+	}()
+	return nil
+}
+
+// 移除某个peer
+func (p2p *P2PNetWork) RemovePeer(p *pbftnet.Peer) error {
+	go func() {
+		p2pStream, ok := p2p.books[p.ID]
+		if !ok {
+			return
+		}
+		select {
+		case p2pStream.closeReadStrem <- struct{}{}:
+		default:
+		}
+		select {
+		case p2pStream.closeWriteStrem <- struct{}{}:
+		default:
+		}
+	}()
+	return nil
+}
+
+func (p2p *P2PNetWork) RegisterOnReceive(modelID string, callBack pbftnet.OnReceive) error {
+	p2p.Lock()
+	p2p.recvCB[modelID] = callBack
+	p2p.Unlock()
+	return nil
 }

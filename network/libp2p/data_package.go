@@ -9,36 +9,8 @@ import (
 	"hash/crc32"
 	"io"
 
-	"github.com/libp2p/go-libp2p-core/network"
 	nt "github.com/wupeaking/pbft_impl/network"
 )
-
-func (p2p *P2PNetWork) dataStreamRecv(stream network.Stream) {
-	rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
-	for {
-		// todo:: 此处需要修改
-		// 读取数据流
-		// 解码数据
-		// 反序列化结构
-		// 回调对应的消息模块
-		str, err := rw.ReadString('\n')
-		if err != nil {
-			fmt.Println("Error reading from buffer")
-			break
-		}
-
-		if str == "" {
-			break
-		}
-		if str != "\n" {
-			fmt.Printf("\x1b[32m%s\x1b[0m> ", str)
-		}
-	}
-	stream.Conn().Close()
-	p2p.Lock()
-	delete(p2p.books, stream.ID())
-	p2p.Unlock()
-}
 
 func (p2p *P2PNetWork) packageData(msg *nt.BroadcastMsg) ([]byte, error) {
 	dataBuf := bytes.NewBuffer(nil)
@@ -71,7 +43,7 @@ func (p2p *P2PNetWork) packageData(msg *nt.BroadcastMsg) ([]byte, error) {
 	return dataBuf.Bytes(), nil
 }
 
-func (p2p *P2PNetWork) unpackageData(rw *bufio.ReadWriter) (*nt.BroadcastMsg, error) {
+func (p2p *P2PNetWork) unpackageData(rw *bufio.Reader) (*nt.BroadcastMsg, error) {
 	// 尝试读取magic 头
 	magicHeader := make([]byte, 5)
 	_, err := io.ReadFull(rw, magicHeader)
