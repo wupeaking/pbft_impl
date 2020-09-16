@@ -13,6 +13,7 @@ import (
 	"github.com/wupeaking/pbft_impl/model"
 	"github.com/wupeaking/pbft_impl/network"
 	"github.com/wupeaking/pbft_impl/network/http_network"
+	"github.com/wupeaking/pbft_impl/network/libp2p"
 	"github.com/wupeaking/pbft_impl/storage/world_state"
 )
 
@@ -145,7 +146,16 @@ func main() {
 	ws.Verifiers = verifiers
 
 	// 启动P2P
-	switcher := http_network.New(cfg.NodeAddrs, cfg.LocalAddr, cfg.NetworkCfg.Publickey, cfg)
+	var switcher network.SwitcherI
+	if cfg.NetMode == "http" {
+		switcher = http_network.New(cfg.NodeAddrs, cfg.LocalAddr, cfg.NetworkCfg.Publickey, cfg)
+	} else {
+		switcher, err = libp2p.New(cfg)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	switcher.Start()
 	pbft, err := consensus.New(ws, nil, switcher, cfg)
 	if err != nil {

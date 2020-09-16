@@ -58,7 +58,20 @@ type P2PStream struct {
 	closeWriteStrem  chan struct{}
 }
 
-func New(cfg *config.Configure) (*P2PNetWork, error) {
+func New(cfg *config.Configure) (pbftnet.SwitcherI, error) {
+	switch strings.ToLower(cfg.NetworkCfg.LogLevel) {
+	case "debug":
+		logger.Logger.SetLevel(log.DebugLevel)
+	case "warn":
+		logger.Logger.SetLevel(log.WarnLevel)
+	case "info":
+		logger.Logger.SetLevel(log.InfoLevel)
+	case "error":
+		logger.Logger.SetLevel(log.ErrorLevel)
+	default:
+		logger.Logger.SetLevel(log.InfoLevel)
+	}
+
 	// 加载私钥
 	priv, err := cryptogo.LoadPrivateKey(cfg.NetworkCfg.PriVateKey)
 	if err != nil {
@@ -122,7 +135,7 @@ func New(cfg *config.Configure) (*P2PNetWork, error) {
 }
 
 func (p2p *P2PNetWork) Start() error {
-	logger.Debugf("启动P2P模块, ID: %s", p2p.Host.ID())
+	logger.Infof("启动P2P模块, ID: %s, addr: %s", p2p.Host.ID(), p2p.Host.Addrs())
 	p2p.Host.SetStreamHandler(protocol.ID(p2p.protocol), p2p.streamHandler)
 
 	ctx := context.Background()
@@ -131,6 +144,7 @@ func (p2p *P2PNetWork) Start() error {
 		return err
 	}
 	if p2p.bootstarp {
+		logger.Infof("当前节点作为boostrap节点启动")
 		return nil
 	}
 

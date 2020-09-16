@@ -11,6 +11,7 @@ import (
 	"github.com/wupeaking/pbft_impl/model"
 	"github.com/wupeaking/pbft_impl/network"
 	"github.com/wupeaking/pbft_impl/network/http_network"
+	"github.com/wupeaking/pbft_impl/network/libp2p"
 	"github.com/wupeaking/pbft_impl/storage/world_state"
 	"github.com/wupeaking/pbft_impl/transaction"
 )
@@ -38,7 +39,16 @@ func New() *PBFTNode {
 	if err != nil {
 		logger.Fatalf("读取配置文件发生错误 err: %v", err)
 	}
-	switcher := http_network.New(cfg.NodeAddrs, cfg.LocalAddr, cfg.NetworkCfg.Publickey, cfg)
+	var switcher network.SwitcherI
+	if cfg.NetMode == "http" {
+		switcher = http_network.New(cfg.NodeAddrs, cfg.LocalAddr, cfg.NetworkCfg.Publickey, cfg)
+	} else {
+		switcher, err = libp2p.New(cfg)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	txPool := transaction.NewTxPool(switcher, cfg)
 
 	var consen *consensus.PBFT
