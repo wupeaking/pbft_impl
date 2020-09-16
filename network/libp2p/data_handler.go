@@ -22,7 +22,7 @@ outLoop:
 		default:
 			msg, err := p2p.unpackageData(rw)
 			if err != nil {
-				logger.Infof("P2p Error reading from buffer")
+				logger.Infof("P2p Error reading from buffer err: %s", err.Error())
 				break outLoop
 			}
 			broadMsg, _ := json.Marshal(msg)

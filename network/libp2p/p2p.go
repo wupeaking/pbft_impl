@@ -25,7 +25,9 @@ import (
 // 使用开源的libp2p实现P2P组件
 
 var logger *log.Entry
-var defaultBootstraps []string
+var defaultBootstraps = []string{
+	"/dns4/sh.rootk.com/tcp/10809/p2p/QmPiVFLNNz54JzKhxm5prDRFftZUe5j2rb4L4D57aH5yad",
+}
 
 func init() {
 	logg := log.New()
@@ -154,7 +156,7 @@ func (p2p *P2PNetWork) Start() error {
 		if err != nil {
 			return err
 		}
-		go func(pi *peer.AddrInfo) {
+		/*go*/ func(pi *peer.AddrInfo) {
 			if err := p2p.Host.Connect(ctx, *pi); err != nil {
 				logger.Infof("连接公共启动节点失败: %s\n", err.Error())
 			} else {

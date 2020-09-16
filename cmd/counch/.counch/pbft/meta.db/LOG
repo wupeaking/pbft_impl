@@ -566,3 +566,41 @@
 17:41:37.164139 version@stat F·[2 1] S·726B[484B 242B] Sc·[0.50 0.00]
 17:41:37.191736 db@janitor F·5 G·0
 17:41:37.191797 db@open done T·32.589207ms
+=============== Sep 16, 2020 (CST) ===============
+15:06:36.453635 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+15:06:36.454347 version@stat F·[2 1] S·726B[484B 242B] Sc·[0.50 0.00]
+15:06:36.454378 db@open opening
+15:06:36.454481 journal@recovery F·1
+15:06:36.454968 journal@recovery recovering @133
+15:06:36.460406 memdb@flush created L0@135 N·15 S·456B "blo..eta,v323":"blo..eta,v309"
+15:06:36.462746 version@stat F·[3 1] S·1KiB[940B 242B] Sc·[0.75 0.00]
+15:06:36.472374 db@janitor F·6 G·0
+15:06:36.472414 db@open done T·18.02235ms
+=============== Sep 16, 2020 (CST) ===============
+15:09:17.119395 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+15:09:17.119971 version@stat F·[3 1] S·1KiB[940B 242B] Sc·[0.75 0.00]
+15:09:17.120006 db@open opening
+15:09:17.120121 journal@recovery F·1
+15:09:17.120254 journal@recovery recovering @136
+15:09:17.121022 version@stat F·[3 1] S·1KiB[940B 242B] Sc·[0.75 0.00]
+15:09:17.131533 db@janitor F·6 G·0
+15:09:17.131595 db@open done T·11.571986ms
+=============== Sep 16, 2020 (CST) ===============
+16:06:23.610288 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+16:06:23.610826 version@stat F·[3 1] S·1KiB[940B 242B] Sc·[0.75 0.00]
+16:06:23.610858 db@open opening
+16:06:23.610981 journal@recovery F·1
+16:06:23.611487 journal@recovery recovering @138
+16:06:23.613348 memdb@flush created L0@140 N·33 S·904B "blo..eta,v357":"blo..eta,v325"
+16:06:23.618378 version@stat F·[4 1] S·2KiB[1KiB 242B] Sc·[1.00 0.00]
+16:06:23.635001 db@janitor F·7 G·0
+16:06:23.635062 db@open done T·24.189569ms
+16:06:23.635146 table@compaction L0·4 -> L1·1 S·2KiB Q·358
+16:06:23.637297 table@build created L1@143 N·1 S·242B "blo..eta,v357":"blo..eta,v357"
+16:06:23.637374 version@stat F·[0 1] S·242B[0B 242B] Sc·[0.00 0.00]
+16:06:23.643191 table@compaction committed F-4 S-1KiB Ke·0 D·50 T·7.975186ms
+16:06:23.645734 table@remove removed @140
+16:06:23.646243 table@remove removed @135
+16:06:23.647361 table@remove removed @132
+16:06:23.648036 table@remove removed @129
+16:06:23.648818 table@remove removed @128

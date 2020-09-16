@@ -200,10 +200,10 @@ func (cd *Coordinator) msgOnReceive(modelID string, msgBytes []byte, p *network.
 			if !cd.pbft.VerfifyBlockHeader(blockResp.Block) {
 				return
 			}
-			pub, _ := cryptogo.Hex2Bytes(p.ID)
+			// pub, _ := cryptogo.Hex2Bytes(p.ID)
 			// cd.pbft.IsVaildVerifier(pub)
 			logger.Infof("接收到区块高度消息")
-			if cd.pbft.IsVaildVerifier(pub) && cd.maxHeight.UpdateHeight(blockResp.Block.BlockNum, p.ID) {
+			if /*cd.pbft.IsVaildVerifier(pub) &&*/ cd.maxHeight.UpdateHeight(blockResp.Block.BlockNum, p.ID) {
 				// 发起新区块提议
 				// 检查发起的区块高度是否已经发起过
 				if blockResp.Block.BlockNum > cd.curRequestProcess.blockNum {
@@ -260,6 +260,7 @@ func (cd *Coordinator) requestBlockHeight() {
 		MsgType: model.BroadcastMsgType_request_load_block,
 		Msg:     body,
 	}
+	logger.Infof("请求区块高度")
 	cd.switcher.Broadcast(msg.ModelID, &msg)
 }
 
