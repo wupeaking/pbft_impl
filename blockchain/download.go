@@ -49,6 +49,7 @@ func (bp *BlockPool) SetPeerHight(peer *network.Peer, height uint64) {
 	}
 	// 说明本节点已经落后 停止共识 追上最高节点
 	if bp.maxHeight < height {
+		logger.Warnf("本节点落后区块 停止共识 本节点区块高度: %d 当前区块高度: %d", bp.maxHeight, height)
 		bp.maxHeight = height
 	}
 }

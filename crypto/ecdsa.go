@@ -77,7 +77,11 @@ func Sign(priv *ecdsa.PrivateKey, conetnt []byte) (string, error) {
 		return "", err
 	}
 
-	return fmt.Sprintf("0x%x%x", r.Bytes(), s.Bytes()), nil
+	// if len(r.Bytes()) != 32 || len(s.Bytes()) != 32 {
+	// 	panic(fmt.Sprintf("%s %s", r.Text(16), s.Text(16)))
+	// }
+
+	return fmt.Sprintf("0x%064x%064x", r.Bytes(), s.Bytes()), nil
 }
 
 // VerifySign hash为16进制格式

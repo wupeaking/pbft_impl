@@ -82,7 +82,8 @@ func (bc *BlockChain) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer
 		return
 	}
 	var msgPkg network.BroadcastMsg
-	if json.Unmarshal(msgBytes, &msgPkg) != nil {
+	if err := json.Unmarshal(msgBytes, &msgPkg); err != nil {
+		logger.Errorf("blockchain模块 消息不能被反序列化 err: %v", err)
 		return
 	}
 
@@ -90,7 +91,8 @@ func (bc *BlockChain) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer
 	case model.BroadcastMsgType_request_load_block:
 		// 表示对方请求本节点的区块信息
 		var blockReq model.BlockRequest
-		if proto.Unmarshal(msgPkg.Msg, &blockReq) != nil {
+		if err := proto.Unmarshal(msgPkg.Msg, &blockReq); err != nil {
+			logger.Errorf("不能解析出请求的区块高度")
 			return
 		}
 		blockNum := blockReq.BlockNum
@@ -104,6 +106,7 @@ func (bc *BlockChain) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer
 			return
 		}
 		if blk == nil {
+			logger.Warnf("查询的区块高度不存在 height: %v", blockNum)
 			return
 		}
 
@@ -120,6 +123,7 @@ func (bc *BlockChain) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer
 		}
 		err = bc.switcher.BroadcastToPeer("blockchain", &msg, p)
 		if err != nil {
+			logger.Warnf("广播区块出错 err: %v， peer: %v", err, p)
 			//todo:: 可能需要移除这个peer
 			bc.switcher.RemovePeer(p)
 		}

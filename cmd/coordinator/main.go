@@ -184,7 +184,8 @@ func main() {
 
 func (cd *Coordinator) msgOnReceive(modelID string, msgBytes []byte, p *network.Peer) {
 	var msgPkg network.BroadcastMsg
-	if json.Unmarshal(msgBytes, &msgPkg) != nil {
+	if err := json.Unmarshal(msgBytes, &msgPkg); err != nil {
+		logger.Debugf("消息反序列化失败 err: %v", err)
 		return
 	}
 
@@ -192,17 +193,19 @@ func (cd *Coordinator) msgOnReceive(modelID string, msgBytes []byte, p *network.
 	case model.BroadcastMsgType_send_specific_block:
 		// 表示对方向本节点发送区块信息
 		var blockResp model.BlockResponse
-		if proto.Unmarshal(msgPkg.Msg, &blockResp) != nil {
+		if err := proto.Unmarshal(msgPkg.Msg, &blockResp); err != nil {
+			logger.Errorf("不能解析对方发送的区块信息 err:%v", err)
 			return
 		}
 		if blockResp.RequestType == model.BlockRequestType_only_header {
 			// 校验区块头
 			if !cd.pbft.VerfifyBlockHeader(blockResp.Block) {
+				logger.Errorf("区块校验失败")
 				return
 			}
 			// pub, _ := cryptogo.Hex2Bytes(p.ID)
 			// cd.pbft.IsVaildVerifier(pub)
-			logger.Infof("接收到区块高度消息")
+			logger.Infof("接收到区块高度消息, respheight: %v, curHeight: %v", blockResp.Block.BlockNum, cd.maxHeight.height)
 			if /*cd.pbft.IsVaildVerifier(pub) &&*/ cd.maxHeight.UpdateHeight(blockResp.Block.BlockNum, p.ID) {
 				// 发起新区块提议
 				// 检查发起的区块高度是否已经发起过
@@ -245,6 +248,8 @@ func (cd *Coordinator) msgOnReceive(modelID string, msgBytes []byte, p *network.
 			}
 
 		}
+	default:
+		logger.Warnf("未识别的消息类型 %v", msgPkg.MsgType.String())
 	}
 }
 
@@ -261,7 +266,9 @@ func (cd *Coordinator) requestBlockHeight() {
 		Msg:     body,
 	}
 	logger.Infof("请求区块高度")
-	cd.switcher.Broadcast(msg.ModelID, &msg)
+	if err := cd.switcher.Broadcast(msg.ModelID, &msg); err != nil {
+		logger.Errorf("请求区块高度出错 err: %v", err)
+	}
 }
 
 func (cd *Coordinator) requestNewBlockProposal(blockNum uint64) {

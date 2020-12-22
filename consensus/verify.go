@@ -175,15 +175,18 @@ func (pbft *PBFT) VerfifyMostBlock(blk *model.PbftBlock) bool {
 // VerfifyBlockHeader 验证区块头
 func (pbft *PBFT) VerfifyBlockHeader(blk *model.PbftBlock) bool {
 	if !pbft.IsVaildVerifier(blk.SignerId) {
+		pbft.logger.Debugf("不是有效的验证者")
 		return false
 	}
 
 	hash, _ := cryptogo.Hex2Bytes(blk.BlockId)
 	pubKey, err := cryptogo.LoadPublicKey(fmt.Sprintf("0x%x", blk.SignerId))
 	if err != nil {
+		pbft.logger.Debugf("加载公钥失败 err:%v", err)
 		return false
 	}
 	if !cryptogo.VerifySign(pubKey, fmt.Sprintf("0x%x", blk.Sign), fmt.Sprintf("0x%x", hash)) {
+		pbft.logger.Debugf("验证签名失败 ")
 		return false
 	}
 

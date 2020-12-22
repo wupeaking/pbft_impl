@@ -16,7 +16,7 @@ outLoop:
 		case <-stream.closeReadStrem:
 			stream.stream.Conn().Close()
 			p2p.Lock()
-			delete(p2p.books, stream.stream.ID())
+			delete(p2p.books, stream.peerID)
 			p2p.Unlock()
 			return
 		default:
@@ -27,8 +27,9 @@ outLoop:
 			}
 			broadMsg, _ := json.Marshal(msg)
 			onReceive := p2p.recvCB[msg.ModelID]
+			//logger.Debugf("接收到消息 msg: %v", broadMsg)
 			if onReceive != nil {
-				go onReceive(msg.ModelID, broadMsg, &pbftnet.Peer{ID: stream.stream.ID()})
+				go onReceive(msg.ModelID, broadMsg, &pbftnet.Peer{ID: stream.peerID})
 			} else {
 				logger.Debugf("当前消息ID没有相对应的处理模块 msgID: %s", msg.ModelID)
 			}
@@ -37,8 +38,9 @@ outLoop:
 
 	stream.stream.Conn().Close()
 	p2p.Lock()
-	delete(p2p.books, stream.stream.ID())
+	delete(p2p.books, stream.peerID)
 	p2p.Unlock()
+	logger.Debugf("删除peer: %s", stream.peerID)
 
 	select {
 	case stream.closeWriteStrem <- struct{}{}:
@@ -55,10 +57,11 @@ outLoop:
 		case <-stream.closeWriteStrem:
 			stream.stream.Conn().Close()
 			p2p.Lock()
-			delete(p2p.books, stream.stream.ID())
+			delete(p2p.books, stream.peerID)
 			p2p.Unlock()
 			return
 		case msg := <-stream.broadcastMsgChan:
+			// logger.Debugf("接收广播消息 %v", msg)
 			msgBuf, err := p2p.packageData(msg)
 			if err != nil {
 				logger.Infof("P2p 广播消息编码失败, err: %v", err)
@@ -78,8 +81,9 @@ outLoop:
 
 	stream.stream.Conn().Close()
 	p2p.Lock()
-	delete(p2p.books, stream.stream.ID())
+	delete(p2p.books, stream.peerID)
 	p2p.Unlock()
+	logger.Debugf("删除peer: %s", stream.peerID)
 
 	select {
 	case stream.closeReadStrem <- struct{}{}:

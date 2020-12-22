@@ -26,7 +26,7 @@ import (
 
 var logger *log.Entry
 var defaultBootstraps = []string{
-	"/dns4/sh.rootk.com/tcp/10809/p2p/QmPiVFLNNz54JzKhxm5prDRFftZUe5j2rb4L4D57aH5yad",
+	"/dns4/sh.rootk.com/tcp/10809/p2p/QmQnfST56YtFxZG5jET5Asr6on5rCswyBHahm3x93cAV5e",
 }
 
 func init() {
@@ -54,6 +54,7 @@ type P2PNetWork struct {
 }
 
 type P2PStream struct {
+	peerID           string
 	stream           network.Stream
 	broadcastMsgChan chan *pbftnet.BroadcastMsg
 	closeReadStrem   chan struct{}
@@ -190,6 +191,7 @@ func (p2p *P2PNetWork) NodeDiscovery() {
 			continue
 		} else {
 			p2pStaeam := &P2PStream{
+				peerID:           peer.ID.String(),
 				stream:           stream,
 				broadcastMsgChan: make(chan *pbftnet.BroadcastMsg, 0),
 				closeReadStrem:   make(chan struct{}, 1),
@@ -206,13 +208,14 @@ func (p2p *P2PNetWork) NodeDiscovery() {
 
 func (p2p *P2PNetWork) streamHandler(stream network.Stream) {
 	p2pStaeam := &P2PStream{
+		peerID:           stream.Conn().RemotePeer().String(),
 		stream:           stream,
 		broadcastMsgChan: make(chan *pbftnet.BroadcastMsg, 0),
 		closeReadStrem:   make(chan struct{}, 1),
 		closeWriteStrem:  make(chan struct{}, 1),
 	}
 	p2p.Lock()
-	p2p.books[stream.ID()] = p2pStaeam
+	p2p.books[p2pStaeam.peerID] = p2pStaeam
 	p2p.Unlock()
 
 	go p2p.dataStreamRecv(p2pStaeam)
@@ -223,6 +226,7 @@ func (p2p *P2PNetWork) streamHandler(stream network.Stream) {
 // 向所有的节点广播消息
 func (p2p *P2PNetWork) Broadcast(modelID string, msg *pbftnet.BroadcastMsg) error {
 	// 向所以已知节点进行广播
+	logger.Debugf("广播节点数量: %d", len(p2p.books))
 	for id := range p2p.books {
 		p2p.BroadcastToPeer(modelID, msg, &pbftnet.Peer{ID: id})
 	}
@@ -238,6 +242,7 @@ func (p2p *P2PNetWork) BroadcastToPeer(modelID string, msg *pbftnet.BroadcastMsg
 	go func() {
 		select {
 		case p2pStream.broadcastMsgChan <- msg:
+			// logger.Debugf("接收广播消息 msg: %v", msg)
 		case <-time.After(1 * time.Minute):
 			logger.Debugf("广播消息到Peer: %s超时", p.ID)
 			return
