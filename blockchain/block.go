@@ -124,8 +124,8 @@ func (bc *BlockChain) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer
 		err = bc.switcher.BroadcastToPeer("blockchain", &msg, p)
 		if err != nil {
 			logger.Warnf("广播区块出错 err: %v， peer: %v", err, p)
-			//todo:: 可能需要移除这个peer
 			bc.switcher.RemovePeer(p)
+			bc.pool.removePeer(p)
 		}
 		return
 

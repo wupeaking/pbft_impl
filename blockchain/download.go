@@ -13,7 +13,7 @@ import (
 type BlockPool struct {
 	switcher    network.SwitcherI
 	ws          *world_state.WroldState
-	heightPeers map[uint64][]*network.Peer
+	heightPeers map[*network.Peer]uint64
 	numBlock    map[uint64]*model.PbftBlock
 	newBlock    chan *model.PbftBlock
 	addBlock    chan *model.PbftBlock
@@ -31,7 +31,7 @@ func NewBlockPool(ws *world_state.WroldState, switcher network.SwitcherI) *Block
 	return &BlockPool{
 		switcher:         switcher,
 		ws:               ws,
-		heightPeers:      make(map[uint64][]*network.Peer),
+		heightPeers:      make(map[*network.Peer]uint64),
 		newBlock:         make(chan *model.PbftBlock),
 		addBlock:         make(chan *model.PbftBlock),
 		startEngine:      make(chan struct{}, 1),
@@ -52,6 +52,10 @@ func (bp *BlockPool) SetPeerHight(peer *network.Peer, height uint64) {
 		logger.Warnf("本节点落后区块 停止共识 本节点区块高度: %d 当前区块高度: %d", bp.maxHeight, height)
 		bp.maxHeight = height
 	}
+	// 尝试把peer对应的高度记录下来 为后面从指定的peer下载区块做准备
+	bp.Lock()
+	bp.heightPeers[peer] = height
+	bp.Unlock()
 }
 
 func (bp *BlockPool) AddBlock(peer *network.Peer, block *model.PbftBlock) {
@@ -87,6 +91,8 @@ func (bp *BlockPool) Routine() {
 			// 尝试请求最高区块
 			bp.requestBlockHeight()
 		case <-stateTicker.C:
+			// 检查当前区块高度是否小于最高区块高度
+			// 如果小于 则停止共识 同时通知download任务开始下载
 			if bp.ws.BlockNum >= bp.maxHeight {
 				select {
 				case bp.startEngine <- struct{}{}:
@@ -104,6 +110,8 @@ func (bp *BlockPool) Routine() {
 				}
 			}
 		case block := <-bp.addBlock:
+			// 接收到其他peer发送的完整区块
+			// 我们把完整区块放入容器中 通知主流程 检查是否能够进行commit
 			if bp.ws.BlockNum+1 == block.BlockNum {
 				bp.newBlock <- block
 				nextnum := bp.ws.BlockNum + 2
@@ -201,18 +209,22 @@ func (bp *BlockPool) downRoutine(num uint64) {
 
 func (bp *BlockPool) pickPeer(blockNum uint64, oldPeer *network.Peer) *network.Peer {
 	/// 从 heightPeers中找出比blockNum高的 然后和oldpeer不重复的
-	for num, peers := range bp.heightPeers {
+	for p, num := range bp.heightPeers {
 		if num < blockNum {
 			continue
 		}
-		for _, p := range peers {
-			if oldPeer == nil {
-				return p
-			}
-			if oldPeer.ID != p.ID {
-				return p
-			}
+		if oldPeer == nil {
+			return p
+		}
+		if oldPeer.ID != p.ID {
+			return p
 		}
 	}
 	return nil
+}
+
+func (bp *BlockPool) removePeer(p *network.Peer) {
+	bp.Lock()
+	delete(bp.heightPeers, p)
+	bp.Unlock()
 }
