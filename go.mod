@@ -17,6 +17,7 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/syndtr/goleveldb v1.0.0
+	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/net v0.0.0-20191002035440-2ec189313ef0 // indirect
 	google.golang.org/grpc v1.24.0 // indirect
 	moul.io/http2curl v1.0.0 // indirect

@@ -42,9 +42,10 @@ func (pbft *PBFT) VerfifyMsg(msg *model.PbftMessage) bool {
 }
 
 func (pbft *PBFT) verfifyMsgInfo(msgInfo *model.PbftMessageInfo) bool {
-	if msgInfo.MsgType == model.MessageType_NewBlockProposal {
-		return pbft.verfifyBlockProposalMsg(msgInfo)
-	}
+	// 2021年06月10日11:08:11 取消掉单独的协调者角色 由验证节点自己充当协调着
+	// if msgInfo.MsgType == model.MessageType_NewBlockProposal {
+	// 	return pbft.verfifyBlockProposalMsg(msgInfo)
+	// }
 	if !pbft.IsVaildVerifier(msgInfo.SignerId) {
 		return false
 	}

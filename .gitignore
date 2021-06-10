@@ -15,3 +15,6 @@
 # vendor/
 
 .counch/
+test_node1/
+test_node2/
+counch.x

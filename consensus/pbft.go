@@ -18,18 +18,18 @@ import (
 
 type PBFT struct {
 	// 当前所属状态
-	sm          *StateMachine
-	verifiers   map[string]*model.Verifier
-	Msgs        *MsgQueue
-	timer       *time.Timer
-	switcher    network.SwitcherI
-	logger      *log.Entry
-	ws          *world_state.WroldState
-	stateMigSig chan model.States // 状态迁移信号
-	txPool      *transaction.TxPool
-	tiggerTimer *time.Timer
-	StopFlag    bool
-	cfg         *config.Configure
+	sm               *StateMachine
+	verifiers        map[string]*model.Verifier
+	Msgs             *MsgQueue
+	timer            *time.Timer // 状态转换超时器
+	switcher         network.SwitcherI
+	logger           *log.Entry
+	ws               *world_state.WroldState
+	stateMigSig      chan model.States // 状态迁移信号
+	txPool           *transaction.TxPool
+	tryProposalTimer *time.Timer // 定时尝试提议区块
+	StopFlag         bool
+	cfg              *config.Configure
 	sync.Mutex
 }
 
@@ -80,8 +80,8 @@ func New(ws *world_state.WroldState, txPool *transaction.TxPool, switcher networ
 	pbft.timer = time.NewTimer(10 * time.Second)
 	pbft.timer.Stop()
 
-	pbft.tiggerTimer = time.NewTimer(300 * time.Millisecond)
-	pbft.tiggerTimer.Stop()
+	pbft.tryProposalTimer = time.NewTimer(5 * time.Second)
+	pbft.tryProposalTimer.Stop()
 
 	l := log.New()
 	l.SetReportCaller(true)
@@ -127,6 +127,9 @@ func (pbft *PBFT) Daemon() {
 	// go pbft.tiggerStateMigrateLoop()
 	go pbft.garbageCollection()
 
+	// 启动定时提案
+	pbft.tryProposalTimer.Reset(5 * time.Second)
+
 	for {
 		select {
 		case <-pbft.Msgs.WaitMsg():
@@ -166,6 +169,16 @@ func (pbft *PBFT) Daemon() {
 			}
 			pbft.appendLogMsg(signedMsg)
 			pbft.broadcastStateMsg(signedMsg)
+		case <-pbft.tryProposalTimer.C:
+			// 1. 检查共识引擎是否可以开始 2.是否处于no_started状态 3. 发起提案广播
+			pbft.tryProposalTimer.Reset(5 * time.Second)
+			if pbft.StopFlag {
+				return
+			}
+			if pbft.sm.CurrentState() != model.States_NotStartd {
+				return
+			}
+			pbft.requestNewBlockProposal()
 		}
 
 	}
@@ -177,15 +190,6 @@ func (pbft *PBFT) tiggerMigrate(s model.States) {
 		return
 	default:
 		return
-	}
-}
-
-func (pbft *PBFT) tiggerStateMigrateLoop() {
-	for {
-		select {
-		case <-pbft.tiggerTimer.C:
-			pbft.tiggerMigrate(0)
-		}
 	}
 }
 
@@ -253,4 +257,24 @@ func (pbft *PBFT) Stop() {
 	pbft.StopFlag = true
 	pbft.sm.ChangeState(model.States_NotStartd)
 	pbft.Unlock()
+}
+
+func (pbft *PBFT) requestNewBlockProposal() {
+	msgInfo := model.PbftGenericMessage{
+		Info: &model.PbftMessageInfo{
+			MsgType: model.MessageType_NewBlockProposal,
+			SeqNum:  pbft.ws.BlockNum + 1,
+			View:    pbft.ws.View,
+		},
+	}
+	// 签名
+	signedMsg, err := pbft.SignMsg(model.NewPbftMessage(&msgInfo))
+	if err != nil {
+		pbft.logger.Debugf("发起新提案区块消息时 在签名过程中发生错误 err: %v ",
+			err)
+		return
+	}
+	pbft.Msgs.InsertMsg(signedMsg)
+	// 广播消息
+	pbft.broadcastStateMsg(signedMsg)
 }

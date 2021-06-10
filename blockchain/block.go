@@ -102,7 +102,7 @@ func (bc *BlockChain) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer
 		}
 		blk, err := bc.ws.GetBlock(blockNum)
 		if err != nil {
-			logger.Warnf("依靠区块标号查询区块出错 err: %v", err)
+			logger.Warnf("依靠区块标号查询区块出错 blockNum: %d err: %v", blockNum, err)
 			return
 		}
 		if blk == nil {

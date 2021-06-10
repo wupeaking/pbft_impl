@@ -26,7 +26,7 @@ import (
 
 var logger *log.Entry
 var defaultBootstraps = []string{
-	"/dns4/sh.rootk.com/tcp/10809/p2p/QmQnfST56YtFxZG5jET5Asr6on5rCswyBHahm3x93cAV5e",
+	"/dns4/nats.wupengxin.cn/tcp/8905/p2p/QmTk5Qp3YCdxinjwzFyEsivKv2AYFzvhyXAspMTszZ42xF",
 }
 
 func init() {
@@ -159,7 +159,8 @@ func (p2p *P2PNetWork) Start() error {
 		}
 		/*go*/ func(pi *peer.AddrInfo) {
 			if err := p2p.Host.Connect(ctx, *pi); err != nil {
-				logger.Infof("连接公共启动节点失败: %s\n", err.Error())
+				logger.Infof("连接公共启动节点失败: %s, peerinfo: %v\n",
+					err.Error(), peerinfo)
 			} else {
 				logger.Infof("连接公共启动节点成功: peerinfo: %v\n", pi)
 			}

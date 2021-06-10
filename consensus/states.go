@@ -496,7 +496,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 				// 满足节点数量   进入not start view +1
 				pbft.ws.IncreaseView()
 				pbft.sm.ChangeState(model.States_NotStartd)
-				pbft.timer.Reset(10 * time.Second)
+				// pbft.timer.Reset(10 * time.Second)
 				return
 			}
 		}
@@ -632,7 +632,7 @@ func (pbft *PBFT) tiggerMigrateProcess(s model.States) {
 				// 满足节点数量   进入not start view +1
 				pbft.ws.IncreaseView()
 				pbft.sm.ChangeState(model.States_NotStartd)
-				pbft.timer.Reset(10 * time.Second)
+				// pbft.timer.Reset(10 * time.Second)
 				return
 			}
 		}

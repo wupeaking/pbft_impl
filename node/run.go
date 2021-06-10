@@ -2,7 +2,10 @@ package node
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/wupeaking/pbft_impl/blockchain"
 	"github.com/wupeaking/pbft_impl/common/config"
@@ -157,5 +160,14 @@ func (node *PBFTNode) Run() {
 	// 启动交易池
 	go node.tx.Start()
 
-	select {}
+	sig := make(chan os.Signal)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM,
+		syscall.SIGQUIT, syscall.SIGUSR1, syscall.SIGUSR2)
+
+	select {
+	case <-sig:
+		logger.Infof("signal received...")
+		node.consensusEngine.Stop()
+		return
+	}
 }
