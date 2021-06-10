@@ -13,19 +13,23 @@ import (
 
 func (pbft *PBFT) VerfifyMsg(msg *model.PbftMessage) bool {
 	if !pbft.isValidMsg(msg) {
+		pbft.logger.Debugf("消息格式错误")
 		return false
 	}
 	if gm := msg.GetGeneric(); gm != nil {
 		if !pbft.verfifyMsgInfo(gm.Info) {
+			pbft.logger.Debugf("通用消息验证失败")
 			return false
 		}
 		for i := range gm.OtherInfos {
 			if !pbft.verfifyMsgInfo(gm.OtherInfos[i]) {
+				pbft.logger.Debugf("其他通用消息验证失败")
 				return false
 			}
 		}
 		if gm.Block != nil {
 			if !pbft.verfifyBlock(gm.Block) {
+				pbft.logger.Debugf("消息内的区块验证失败")
 				return false
 			}
 		}
@@ -34,11 +38,26 @@ func (pbft *PBFT) VerfifyMsg(msg *model.PbftMessage) bool {
 
 	if vc := msg.GetViewChange(); vc != nil {
 		if !pbft.verfifyMsgInfo(vc.Info) {
+			pbft.logger.Debugf("视图消息验证失败")
 			return false
 		}
 		return true
 	}
 	return false
+}
+
+func (pbft *PBFT) GetMsgSigner(msg *model.PbftMessage) []byte {
+	if !pbft.isValidMsg(msg) {
+		return nil
+	}
+	if gm := msg.GetGeneric(); gm != nil {
+		return gm.Info.SignerId
+	}
+
+	if vc := msg.GetViewChange(); vc != nil {
+		return vc.Info.SignerId
+	}
+	return nil
 }
 
 func (pbft *PBFT) verfifyMsgInfo(msgInfo *model.PbftMessageInfo) bool {
@@ -88,13 +107,16 @@ func (pbft *PBFT) verfifyBlockProposalMsg(msgInfo *model.PbftMessageInfo) bool {
 	return cryptogo.VerifySign(pubKey, fmt.Sprintf("0x%x", msgInfo.Sign), fmt.Sprintf("0x%x", hash))
 }
 
+// verfifyBlock 校验主签名者的签名
 func (pbft *PBFT) verfifyBlock(blk *model.PbftBlock) bool {
 	if !pbft.IsVaildVerifier(blk.SignerId) {
+		pbft.logger.Debugf("不是有效的验证者 no: %d", blk.BlockNum)
 		return false
 	}
 
 	pubKey, err := cryptogo.LoadPublicKey(fmt.Sprintf("0x%x", blk.SignerId))
 	if err != nil {
+		pbft.logger.Debugf("公钥加载失败, err:%v no: %d", err, blk.BlockNum)
 		return false
 	}
 
@@ -110,7 +132,8 @@ func (pbft *PBFT) verfifyBlock(blk *model.PbftBlock) bool {
 	sh := sha256.New()
 	sh.Write(content)
 	hash := sh.Sum(nil)
-	if b.BlockId != hex.EncodeToString(hash) {
+	if blk.BlockId != hex.EncodeToString(hash) {
+		pbft.logger.Debugf("block hash 校验不一致")
 		return false
 	}
 	return cryptogo.VerifySign(pubKey, fmt.Sprintf("0x%x", blk.Sign), fmt.Sprintf("0x%x", hash))
@@ -118,6 +141,10 @@ func (pbft *PBFT) verfifyBlock(blk *model.PbftBlock) bool {
 
 // VerfifyMostBlock 验证有超过2/3的节点已对区块进行了签名
 func (pbft *PBFT) VerfifyMostBlock(blk *model.PbftBlock) bool {
+	if blk.BlockNum == 0 {
+		return pbft.VerfifyGenesisBlock(blk)
+	}
+
 	if !pbft.IsVaildVerifier(blk.SignerId) {
 		return false
 	}
@@ -134,7 +161,7 @@ func (pbft *PBFT) VerfifyMostBlock(blk *model.PbftBlock) bool {
 	sh := sha256.New()
 	sh.Write(content)
 	hash := sh.Sum(nil)
-	if b.BlockId != hex.EncodeToString(hash) {
+	if blk.BlockId != hex.EncodeToString(hash) {
 		return false
 	}
 	pubKey, err := cryptogo.LoadPublicKey(fmt.Sprintf("0x%x", blk.SignerId))
@@ -173,8 +200,12 @@ func (pbft *PBFT) VerfifyMostBlock(blk *model.PbftBlock) bool {
 	return false
 }
 
-// VerfifyBlockHeader 验证区块头
+// VerfifyBlockHeader 验证区块头　需要超过2/3f才能成功
 func (pbft *PBFT) VerfifyBlockHeader(blk *model.PbftBlock) bool {
+	if blk.BlockNum == 0 {
+		return pbft.VerfifyGenesisBlock(blk)
+	}
+
 	if !pbft.IsVaildVerifier(blk.SignerId) {
 		pbft.logger.Debugf("不是有效的验证者")
 		return false
@@ -316,6 +347,15 @@ func (pbft *PBFT) signBlock(blk *model.PbftBlock) (*model.PbftBlock, error) {
 		blk.SignerId = pbft.ws.CurVerfier.PublickKey
 		blk.Sign = s
 	} else {
+		if blk.SignPairs == nil {
+			blk.SignPairs = make([]*model.SignPairs, 0)
+		}
+
+		for i := range blk.SignPairs {
+			if bytes.Compare(blk.SignPairs[i].SignerId, pbft.ws.CurVerfier.PublickKey) == 0 {
+				return blk, nil
+			}
+		}
 		blk.SignPairs = append(blk.SignPairs, &model.SignPairs{
 			SignerId: pbft.ws.CurVerfier.PublickKey,
 			Sign:     s,
@@ -358,4 +398,29 @@ func (pbft *PBFT) IsPrimaryVerfier() bool {
 		primary = 0
 	}
 	return bytes.Compare(pbft.ws.Verifiers[primary].PublickKey, pbft.ws.CurVerfier.PublickKey) == 0
+}
+
+func (pbft *PBFT) VerfifyGenesisBlock(blk *model.PbftBlock) bool {
+	g, err := pbft.ws.GetBlock(0)
+	if err != nil {
+		pbft.logger.Errorf("获取本地创世区块错误")
+	}
+	if g.BlockId != blk.BlockId {
+		return false
+	}
+	if g.BlockNum != blk.BlockNum {
+		return false
+	}
+	if g.TimeStamp != blk.TimeStamp {
+		return false
+	}
+	if len(g.SignPairs) != len(blk.SignPairs) {
+		return false
+	}
+	for i := range g.SignPairs {
+		if bytes.Compare(g.SignPairs[i].SignerId, blk.SignPairs[i].SignerId) != 0 {
+			return false
+		}
+	}
+	return true
 }

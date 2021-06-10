@@ -79,7 +79,9 @@ func New() *PBFTNode {
 			}
 		}
 
-		ws.SetGenesis(&zeroBlock)
+		if err := ws.SetGenesis(&zeroBlock); err != nil {
+			panic(err)
+		}
 		ws.SetValue(0, "", "genesis", zeroBlock.Verifiers)
 		ws.UpdateLastWorldState()
 

@@ -91,6 +91,7 @@ func (dbc *DBCache) GetBlockByID(id string) (*model.PbftBlock, error) {
 }
 
 func (dbc *DBCache) GetBlockByNum(num uint64) (*model.PbftBlock, error) {
+	// 先获取blockid
 	value, err := dbc.blockDB.Get(fmt.Sprintf("%d", num))
 	if err != nil {
 		return nil, err
@@ -113,23 +114,46 @@ func (dbc *DBCache) GetBlockByNum(num uint64) (*model.PbftBlock, error) {
 }
 
 func (dbc *DBCache) GetGenesisBlock() (*model.Genesis, error) {
-	value, err := dbc.blockDB.Get(fmt.Sprintf("%d", 0))
+	blk, err := dbc.GetBlockByNum(0)
 	if err != nil {
 		return nil, err
 	}
-	if value == "" {
+	if blk == nil {
 		return nil, nil
 	}
 
-	var blk model.Genesis
-	err = proto.Unmarshal([]byte(value), &blk)
-	return &blk, err
+	var g model.Genesis
+	g.Verifiers = make([]*model.Verifier, 0)
+	for i := range blk.SignPairs {
+		g.Verifiers = append(g.Verifiers, &model.Verifier{
+			PublickKey: blk.SignPairs[i].SignerId,
+		})
+	}
+	return &g, err
 }
 
 func (dbc *DBCache) SetGenesisBlock(genesis *model.Genesis) error {
-	v, err := proto.Marshal(genesis)
+	blk := model.PbftBlock{
+		PrevBlock: model.GenesisPrevBlockId,
+		BlockId:   model.GenesisBlockId,
+		TimeStamp: uint64(model.GenesisTime),
+		BlockNum:  uint64(model.GenesisBlockNum),
+		SignPairs: make([]*model.SignPairs, 0),
+	}
+	for i := range genesis.Verifiers {
+		blk.SignPairs = append(blk.SignPairs, &model.SignPairs{
+			SignerId: genesis.Verifiers[i].PublickKey,
+		})
+	}
+
+	v, err := proto.Marshal(&blk)
 	if err != nil {
 		return err
 	}
-	return dbc.blockDB.Set(fmt.Sprintf("%d", 0), string(v))
+
+	if err := dbc.blockDB.Set(fmt.Sprintf("%d", 0), model.GenesisBlockId); err != nil {
+		return err
+	}
+
+	return dbc.blockDB.Set(model.GenesisBlockId, string(v))
 }
