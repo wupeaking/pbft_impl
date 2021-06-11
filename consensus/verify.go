@@ -317,6 +317,7 @@ func (pbft *PBFT) signMsgInfo(msgInfo *model.PbftMessageInfo) (*model.PbftMessag
 	return msgInfo, nil
 }
 
+// signBlock 对区块进行签名 如果是主节点进行主签名 否则进行次签名 如果已近签名过则不签名
 func (pbft *PBFT) signBlock(blk *model.PbftBlock) (*model.PbftBlock, error) {
 	privKey, err := cryptogo.LoadPrivateKey(fmt.Sprintf("0x%x", pbft.ws.CurVerfier.PrivateKey))
 	if err != nil {

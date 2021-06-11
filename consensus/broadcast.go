@@ -18,12 +18,11 @@ func (pbft *PBFT) AddBroadcastTask(msg *model.PbftMessage) {
 
 // 定时广播 由于网路原因 可能会导致一些节点不能一次成功收到消息 多次进行广播
 func (pbft *PBFT) BroadcastMsgRoutine() {
-	t := time.NewTimer(1 * time.Second)
+	t := time.NewTicker(2 * time.Second)
 	for {
 		select {
 		case <-t.C:
 			// 定时广播
-			t.Reset(1 * time.Second)
 			if pbft.StopFlag {
 				continue
 			}
@@ -33,8 +32,9 @@ func (pbft *PBFT) BroadcastMsgRoutine() {
 			if pbft.curBroadcastMsg == nil {
 				continue
 			}
-
-			pbft.broadcastStateMsg(pbft.curBroadcastMsg)
+			if err := pbft.broadcastStateMsg(pbft.curBroadcastMsg); err != nil {
+				pbft.logger.Debugf("定时广播消息出错 err: %v", err)
+			}
 
 		case msg := <-pbft.broadcastSig:
 			pbft.curBroadcastMsg = msg

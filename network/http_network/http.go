@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -34,6 +35,7 @@ type HTTPNetWork struct {
 	msgQueue     chan *HTTPMsg
 	peerBooks    *network.PeerBooks
 	recvCB       map[string]network.OnReceive
+	sync.RWMutex
 }
 
 type HTTPMsg struct {
@@ -152,7 +154,9 @@ func (hn *HTTPNetWork) RemovePeer(p *network.Peer) error {
 }
 
 func (hn *HTTPNetWork) RegisterOnReceive(modelID string, callBack network.OnReceive) error {
+	hn.Lock()
 	hn.recvCB[modelID] = callBack
+	hn.Unlock()
 	return nil
 }
 

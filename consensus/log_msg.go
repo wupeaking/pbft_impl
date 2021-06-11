@@ -18,12 +18,27 @@ type LogMessage struct {
 
 type LogMsgCollection map[uint64]LogGroupByType
 
+// blknum: { singerpairs: block }
+type LogBlockCollection map[uint64]map[int]*model.PbftBlock
+
 func (lm LogMsgCollection) FindMsg(num uint64, msgType model.MessageType, view int) LogGroupBySigner {
 	logByType, ok := lm[num]
 	if !ok {
 		return nil
 	}
 	return logByType[fmt.Sprintf("%d-%d", msgType, view)]
+}
+
+func (lm LogBlockCollection) FindBlock(num uint64) map[int]*model.PbftBlock {
+	logBlks, ok := lm[num]
+	if !ok {
+		return nil
+	}
+	return logBlks
+}
+
+func (lm LogBlockCollection) ResetBlock(num uint64) {
+	lm[num] = nil
 }
 
 func (pbft *PBFT) appendLogMsg(msg *model.PbftMessage) {
@@ -49,10 +64,20 @@ func (pbft *PBFT) appendLogMsg(msg *model.PbftMessage) {
 			MessageType: content.Info.MsgType,
 			msg:         msg,
 			view:        content.Info.View,
-			block:       content.Block,
+			// block:       content.Block,
 		}
 		logMsgs[typeView] = msgBySinger
-		pbft.logger.Warnf("追加日志高度: %d, 日志类型: %s", content.Info.SeqNum, content.Info.GetMsgType())
+
+		if content.Block != nil {
+			logBlks := pbft.sm.logBlock[content.Info.SeqNum]
+			if logBlks == nil {
+				logBlks = make(map[int]*model.PbftBlock)
+			}
+			logBlks[len(content.Block.SignPairs)] = content.Block
+			pbft.sm.logBlock[content.Info.SeqNum] = logBlks
+		}
+
+		pbft.logger.Debugf("追加日志高度: %d, 日志类型: %s", content.Info.SeqNum, content.Info.GetMsgType())
 		pbft.sm.logMsg[content.Info.SeqNum] = logMsgs
 		return
 	}

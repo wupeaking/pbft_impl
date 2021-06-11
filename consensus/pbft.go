@@ -45,7 +45,7 @@ type MsgQueue struct {
 func NewMsgQueue() *MsgQueue {
 	return &MsgQueue{
 		l:         singlylinkedlist.New(),
-		comingMsg: make(chan *model.PbftMessage, 1000),
+		comingMsg: make(chan *model.PbftMessage, 10000),
 		size:      1000,
 	}
 }
@@ -55,18 +55,9 @@ func (mq *MsgQueue) InsertMsg(msg *model.PbftMessage) {
 	case mq.comingMsg <- msg:
 		return
 	default:
-
+		println("消息写入通道已满...")
 	}
 }
-
-// func (mq *MsgQueue) GetMsg() *model.PbftMessage {
-// 	v, ok := mq.l.Get(0)
-// 	if !ok {
-// 		return nil
-// 	}
-// 	mq.l.Remove(0)
-// 	return v.(*model.PbftMessage)
-// }
 
 func (mq *MsgQueue) WaitMsg() <-chan *model.PbftMessage {
 	return mq.comingMsg
@@ -77,11 +68,6 @@ func New(ws *world_state.WroldState, txPool *transaction.TxPool, switcher networ
 	pbft.cfg = cfg
 	pbft.Msgs = NewMsgQueue()
 	pbft.sm = NewStateMachine()
-	pbft.timer = time.NewTimer(10 * time.Second)
-	pbft.timer.Stop()
-
-	pbft.tryProposalTimer = time.NewTimer(5 * time.Second)
-	pbft.tryProposalTimer.Stop()
 
 	l := log.New()
 	l.SetReportCaller(true)
@@ -125,23 +111,18 @@ func (pbft *PBFT) Daemon() {
 	go pbft.garbageCollection()
 	go pbft.BroadcastMsgRoutine()
 
-	// 启动定时提案
-	pbft.tryProposalTimer.Reset(5 * time.Second)
+	pbft.timer = time.NewTimer(10 * time.Second)
+	pbft.tryProposalTimer = time.NewTimer(5 * time.Second)
 
 	for {
 		select {
 		case msg := <-pbft.Msgs.WaitMsg():
+			pbft.logger.Debugf("接收到新的消息, 进入状态转移处理......")
 			if pbft.StopFlag {
 				continue
 			}
 			// 有消息进入
 			pbft.StateMigrate(msg)
-
-		// case s := <-pbft.sm.changeSig:
-		// 	if pbft.StopFlag {
-		// 		continue
-		// 	}
-		// 	pbft.tiggerMigrateProcess(s)
 
 		case <-pbft.timer.C:
 			if pbft.StopFlag {
@@ -160,32 +141,30 @@ func (pbft *PBFT) Daemon() {
 			signedMsg, err := pbft.SignMsg(model.NewPbftMessage(&newMsg))
 			if err != nil {
 				pbft.logger.Errorf("在viewchanging状态 进行消息签名时 发生了错误, err: %v", err)
-				return
+				continue
 			}
-			pbft.appendLogMsg(signedMsg)
-			// pbft.broadcastStateMsg(signedMsg)
 			pbft.AddBroadcastTask(signedMsg)
 		case <-pbft.tryProposalTimer.C:
 			// 1. 检查共识引擎是否可以开始 2.是否处于no_started状态 3. 发起提案广播
+			// 重置timer 重置需要先停止 停止的时候要检查是否已经过期 过期可能需要尝试清空通道
+			if !pbft.tryProposalTimer.Stop() {
+				select {
+				case <-pbft.tryProposalTimer.C: // 要尝试抽空chanel的值
+				default:
+				}
+			}
 			pbft.tryProposalTimer.Reset(5 * time.Second)
+
 			if pbft.StopFlag {
-				return
+				continue
 			}
 			if pbft.CurrentState() != model.States_NotStartd {
-				return
+				continue
 			}
+			pbft.logger.Debugf("尝试发起新提案...")
 			pbft.requestNewBlockProposal()
 		}
 
-	}
-}
-
-func (pbft *PBFT) tiggerMigrate(s model.States) {
-	select {
-	case pbft.stateMigSig <- s:
-		return
-	default:
-		return
 	}
 }
 
@@ -207,6 +186,7 @@ func (pbft *PBFT) garbageCollection() {
 
 // 注册到网络的消息回调
 func (pbft *PBFT) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer) {
+	//pbft.logger.Debugf("收到其他节点发来的消息...")
 	if modelID != "consensus" {
 		return
 	}
@@ -220,10 +200,7 @@ func (pbft *PBFT) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer) {
 		pbft.logger.Debugf("共识模块收到消息不能解析")
 		return
 	}
-	// if gm := pbftMsg.GetGeneric(); gm != nil {
-	// 	pbft.logger.Infof("插入Msg的高度: %d", gm.Info.SeqNum)
-	// }
-
+	pbft.logger.Debugf("收到其他节点发来的消息...")
 	pbft.Msgs.InsertMsg(&pbftMsg)
 }
 
