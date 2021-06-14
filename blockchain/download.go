@@ -100,6 +100,7 @@ func (bp *BlockPool) Routine() {
 				}
 
 			} else {
+				logger.Warnf("本节点落后区块 本节点区块高度: %d 当前最高区块高度: %d", bp.ws.BlockNum, bp.maxHeight)
 				select {
 				case bp.stopEngine <- struct{}{}:
 				default:
@@ -156,9 +157,9 @@ func (bp *BlockPool) DownloadBlock() {
 			continue
 		}
 		// 最大容许启动bp.loadRoutineNum个routine去下载区块
-		window := min(maxHeight, curHeight+uint64(bp.loadRoutineNum))
-		bp.loadRoutineGroup.Add(int(window - curHeight))
-		for num := curHeight + 1; num < window; num++ {
+		window := min(maxHeight-curHeight, +uint64(bp.loadRoutineNum))
+		bp.loadRoutineGroup.Add(int(window))
+		for num := curHeight + 1; num <= curHeight+window; num++ {
 			go bp.downRoutine(num)
 		}
 		bp.loadRoutineGroup.Wait()

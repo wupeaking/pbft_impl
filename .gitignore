@@ -14,7 +14,5 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
-.counch/
-test_node1/
-test_node2/
+counch/.counch/
 counch.x

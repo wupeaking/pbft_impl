@@ -32,9 +32,9 @@ func (pbft *PBFT) BroadcastMsgRoutine() {
 			if pbft.curBroadcastMsg == nil {
 				continue
 			}
-			if err := pbft.broadcastStateMsg(pbft.curBroadcastMsg); err != nil {
-				pbft.logger.Debugf("定时广播消息出错 err: %v", err)
-			}
+			// if err := pbft.broadcastStateMsg(pbft.curBroadcastMsg); err != nil {
+			// 	pbft.logger.Debugf("定时广播消息出错 err: %v", err)
+			// }
 
 		case msg := <-pbft.broadcastSig:
 			pbft.curBroadcastMsg = msg

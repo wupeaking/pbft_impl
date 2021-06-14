@@ -16,6 +16,13 @@ import (
 	"github.com/wupeaking/pbft_impl/transaction"
 )
 
+/*
+问题:
+1. 广播消息没有指定peer 任意广播 会出现消息爆炸传递
+2. 定时广播出现过多消息传递 进入viewchange 广播消息类型不对 不定时广播如何解决对方没有收到的问题
+3. 收到消息没有判断是否是重复 重复进入状态迁移
+*/
+
 type PBFT struct {
 	// 当前所属状态
 	sm               *StateMachine
@@ -117,7 +124,6 @@ func (pbft *PBFT) Daemon() {
 	for {
 		select {
 		case msg := <-pbft.Msgs.WaitMsg():
-			pbft.logger.Debugf("接收到新的消息, 进入状态转移处理......")
 			if pbft.StopFlag {
 				continue
 			}
@@ -200,7 +206,7 @@ func (pbft *PBFT) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer) {
 		pbft.logger.Debugf("共识模块收到消息不能解析")
 		return
 	}
-	pbft.logger.Debugf("收到其他节点发来的消息...")
+	//pbft.logger.Debugf("收到其他节点发来的消息...")
 	pbft.Msgs.InsertMsg(&pbftMsg)
 }
 
