@@ -277,3 +277,13 @@ func (p2p *P2PNetWork) RegisterOnReceive(modelID string, callBack pbftnet.OnRece
 	p2p.Unlock()
 	return nil
 }
+
+func (p2p *P2PNetWork) Peers() ([]string, error) {
+	peers := make([]string, 0)
+	p2p.RLock()
+	for _, v := range p2p.books {
+		peers = append(peers, v.peerID)
+	}
+	p2p.Unlock()
+	return peers, nil
+}

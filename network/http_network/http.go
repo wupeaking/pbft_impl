@@ -30,6 +30,7 @@ func init() {
 
 type HTTPNetWork struct {
 	Addrs        []string // 所有的节点地址
+	PeerIDs      []string //
 	LocalAddress string   // 本机地址
 	NodeID       string   // 节点ID
 	msgQueue     chan *HTTPMsg
@@ -43,7 +44,7 @@ type HTTPMsg struct {
 	*network.Peer
 }
 
-func New(nodeAddrs []string, local string, nodeID string, cfg *config.Configure) network.SwitcherI {
+func New(nodeAddrs []config.NodeAddr, local string, nodeID string, cfg *config.Configure) network.SwitcherI {
 	switch strings.ToLower(cfg.NetworkCfg.LogLevel) {
 	case "debug":
 		logger.Logger.SetLevel(log.DebugLevel)
@@ -56,8 +57,15 @@ func New(nodeAddrs []string, local string, nodeID string, cfg *config.Configure)
 	default:
 		logger.Logger.SetLevel(log.InfoLevel)
 	}
+	addrs := make([]string, 0)
+	peers := make([]string, 0)
+	for i := range nodeAddrs {
+		addrs = append(addrs, nodeAddrs[i].Address)
+		peers = append(peers, nodeAddrs[i].PeerID)
+	}
 	return &HTTPNetWork{
-		Addrs:        nodeAddrs,
+		Addrs:        addrs,
+		PeerIDs:      peers,
 		LocalAddress: local,
 		NodeID:       nodeID,
 		msgQueue:     make(chan *HTTPMsg, 1000),
@@ -158,6 +166,10 @@ func (hn *HTTPNetWork) RegisterOnReceive(modelID string, callBack network.OnRece
 	hn.recvCB[modelID] = callBack
 	hn.Unlock()
 	return nil
+}
+
+func (hn *HTTPNetWork) Peers() ([]string, error) {
+	return hn.PeerIDs, nil
 }
 
 func (hn *HTTPNetWork) Recv() {

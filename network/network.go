@@ -15,6 +15,8 @@ type SwitcherI interface {
 	RemovePeer(p *Peer) error
 	RegisterOnReceive(modelID string, callBack OnReceive) error
 	Start() error
+	// 返回所有存在的peers
+	Peers() ([]string, error)
 	// Recv() <-chan interface{}
 }
 

@@ -49,14 +49,19 @@ type TxCfg struct {
 }
 
 type NetworkCfg struct {
-	NetMode        string   `json:"netMode" yaml:"netMode"`       // 暂时只支持http模式
-	LocalAddr      string   `json:"localAddr" yaml:"localAddr"`   // 本机地址
-	NodeAddrs      []string `json:"nodeAddrs" yaml:"nodeAddrs"`   // 节点地址列表
-	Publickey      string   `json:"publicKey" yaml:"publicKey"`   // 节点ID
-	PriVateKey     string   `json:"privateKey" yaml:"privateKey"` // 节点私钥
-	LogLevel       string   `json:"logLevel"`
-	Bootstrap      bool     `json:"bootstrap"`
-	BootstrapPeers []string `json:"bootstrapPeers"`
+	NetMode        string     `json:"netMode" yaml:"netMode"`       // 暂时只支持http模式
+	LocalAddr      string     `json:"localAddr" yaml:"localAddr"`   // 本机地址
+	NodeAddrs      []NodeAddr `json:"nodeAddrs" yaml:"nodeAddrs"`   // 节点地址列表
+	Publickey      string     `json:"publicKey" yaml:"publicKey"`   // 节点ID
+	PriVateKey     string     `json:"privateKey" yaml:"privateKey"` // 节点私钥
+	LogLevel       string     `json:"logLevel"`
+	Bootstrap      bool       `json:"bootstrap"`
+	BootstrapPeers []string   `json:"bootstrapPeers"`
+}
+
+type NodeAddr struct {
+	Address string `json:"address"`
+	PeerID  string `json:"peerID"`
 }
 
 type DBCfg struct {

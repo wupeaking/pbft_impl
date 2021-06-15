@@ -29,6 +29,20 @@ func (lm LogMsgCollection) FindMsg(num uint64, msgType model.MessageType, view i
 	return logByType[fmt.Sprintf("%d-%d", msgType, view)]
 }
 
+// 检查被signer签名的消息是否已经收到
+func (lm LogMsgCollection) ExistMsgBySinger(num uint64, msgType model.MessageType, view int, signer string) bool {
+	logByType, ok := lm[num]
+	if !ok {
+		return false
+	}
+	LogGroupBySigner, ok := logByType[fmt.Sprintf("%d-%d", msgType, view)]
+	if !ok {
+		return false
+	}
+	_, ok = LogGroupBySigner[signer]
+	return ok
+}
+
 func (lm LogBlockCollection) FindBlock(num uint64) map[int]*model.PbftBlock {
 	logBlks, ok := lm[num]
 	if !ok {
@@ -41,11 +55,11 @@ func (lm LogBlockCollection) ResetBlock(num uint64) {
 	lm[num] = nil
 }
 
-func (pbft *PBFT) appendLogMsg(msg *model.PbftMessage) {
+func (pbft *PBFT) appendLogMsg(msg *model.PbftMessage) bool {
 	content := msg.GetGeneric()
 	signer := pbft.GetMsgSigner(msg)
 	if signer == nil {
-		return
+		return false
 	}
 	if content != nil {
 		for i := range content.OtherInfos {
@@ -60,6 +74,10 @@ func (pbft *PBFT) appendLogMsg(msg *model.PbftMessage) {
 		if msgBySinger == nil {
 			msgBySinger = make(LogGroupBySigner)
 		}
+		// if _, ok := msgBySinger[string(signer)]; ok {
+		// 	// 如果已经记录 就不在记录
+		// 	return false
+		// }
 		msgBySinger[string(signer)] = LogMessage{
 			MessageType: content.Info.MsgType,
 			msg:         msg,
@@ -79,7 +97,7 @@ func (pbft *PBFT) appendLogMsg(msg *model.PbftMessage) {
 
 		pbft.logger.Debugf("追加日志高度: %d, 日志类型: %s", content.Info.SeqNum, content.Info.GetMsgType())
 		pbft.sm.logMsg[content.Info.SeqNum] = logMsgs
-		return
+		return true
 	}
 	if content := msg.GetViewChange(); content != nil {
 		logMsgs := pbft.sm.logMsg[content.Info.SeqNum]
@@ -99,4 +117,5 @@ func (pbft *PBFT) appendLogMsg(msg *model.PbftMessage) {
 		logMsgs[typeView] = msgBySinger
 		pbft.sm.logMsg[content.Info.SeqNum] = logMsgs
 	}
+	return false
 }

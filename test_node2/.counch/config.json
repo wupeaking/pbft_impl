@@ -26,7 +26,10 @@
     "network":{
         "netMode": "http",
         "localAddr": "127.0.0.1:29876",
-	    "nodeAddrs": ["http://127.0.0.1:19876", "http://127.0.0.1:39876"],
+	    "nodeAddrs": [
+            {"address": "http://127.0.0.1:19876", "peerID": "QmTGDM1mXFpsZSCxX6vpriHQoWmzC1BGvduFit7LWGGz3C"},
+            {"address": "http://127.0.0.1:39876", "peerID": "QmT98Bn4wjjJEmfKNZBKMRqRE4uH7nv1LFUn4aUUpD8EHA"}
+        ],
         "publicKey": "0x302404eeb2e3d1e75f78f426836cb6ee741d735153e441f1f43fbec55b4482c6d2d59017e608b995ba32255b31c49b646d59834537b9c2efb7cd66c64250c5b2",
         "privateKey": "0x143393667324f1b6a857aa27b98a52bc04fdb8599a42b873d8c74e3c88a26267",
         "logLevel": "info",
