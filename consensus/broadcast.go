@@ -73,15 +73,18 @@ func (pbft *PBFT) BroadcastMsgRoutine() {
 					if _, ok := pbft.verifierPeerID[p.ID]; ok {
 						continue
 					}
+					pbft.logger.Debugf("广播到peer: %s viewchanges", p.ID)
 					pbft.broadcastStateMsgToPeer(pbft.curBroadcastMsg, p)
 				}
+			default:
+				pbft.logger.Warnf("未识别的消息类型")
 			}
 
 		case msg := <-pbft.broadcastSig:
 			// todo:: 根据实际情况 判断是否需要广播
 			// 1. 如果是第一次广播此消息 则全部广播
 			if msg != pbft.curBroadcastMsg {
-				pbft.broadcastStateMsg(pbft.curBroadcastMsg)
+				pbft.broadcastStateMsg(msg)
 				pbft.curBroadcastMsg = msg
 				continue
 			}
