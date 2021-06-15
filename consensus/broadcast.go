@@ -45,9 +45,37 @@ func (pbft *PBFT) BroadcastMsgRoutine() {
 			if pbft.curBroadcastMsg == nil {
 				continue
 			}
-			// if err := pbft.broadcastStateMsg(pbft.curBroadcastMsg); err != nil {
-			// 	pbft.logger.Debugf("定时广播消息出错 err: %v", err)
-			// }
+			switch {
+			case pbft.curBroadcastMsg.GetGeneric() != nil:
+				content := pbft.curBroadcastMsg.GetGeneric()
+				msgInfo := content.GetInfo()
+				signers := pbft.sm.logMsg.FindMsg(msgInfo.GetSeqNum(), msgInfo.GetMsgType(), int(msgInfo.GetView()))
+				if len(signers) >= pbft.minNodeNum() {
+					continue
+				}
+				peers, _ := pbft.switcher.Peers()
+				for _, p := range peers {
+					if _, ok := pbft.verifierPeerID[p.ID]; ok {
+						continue
+					}
+					pbft.broadcastStateMsgToPeer(pbft.curBroadcastMsg, p)
+				}
+
+			case pbft.curBroadcastMsg.GetViewChange() != nil:
+				content := pbft.curBroadcastMsg.GetViewChange()
+				msgInfo := content.GetInfo()
+				signers := pbft.sm.logMsg.FindMsg(msgInfo.GetSeqNum(), msgInfo.GetMsgType(), int(msgInfo.GetView()))
+				if len(signers) >= pbft.minNodeNum() {
+					continue
+				}
+				peers, _ := pbft.switcher.Peers()
+				for _, p := range peers {
+					if _, ok := pbft.verifierPeerID[p.ID]; ok {
+						continue
+					}
+					pbft.broadcastStateMsgToPeer(pbft.curBroadcastMsg, p)
+				}
+			}
 
 		case msg := <-pbft.broadcastSig:
 			// todo:: 根据实际情况 判断是否需要广播
