@@ -119,3 +119,7 @@ func Hex2Bytes(hexStr string) ([]byte, error) {
 	}
 	return hex.DecodeString(hexStr)
 }
+
+func Bytes2Hex(d []byte) string {
+	return fmt.Sprintf("0x%x", d)
+}

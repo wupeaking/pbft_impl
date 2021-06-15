@@ -16,7 +16,7 @@ type SwitcherI interface {
 	RegisterOnReceive(modelID string, callBack OnReceive) error
 	Start() error
 	// 返回所有存在的peers
-	Peers() ([]string, error)
+	Peers() ([]*Peer, error)
 	// Recv() <-chan interface{}
 }
 

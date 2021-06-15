@@ -27,6 +27,7 @@ type PBFT struct {
 	// 当前所属状态
 	sm               *StateMachine
 	verifiers        map[string]*model.Verifier
+	verifierPeerID   map[string]string // peerID --- string(singer)
 	Msgs             *MsgQueue
 	timer            *time.Timer // 状态转换超时器
 	switcher         network.SwitcherI
@@ -101,8 +102,15 @@ func New(ws *world_state.WroldState, txPool *transaction.TxPool, switcher networ
 	for _, v := range ws.Verifiers {
 		pbft.verifiers[string(v.PublickKey)] = v
 	}
+	pbft.verifierPeerID = make(map[string]string)
+
+	// 转换验证者的peer id
+	if err := pbft.LoadVerfierPeerIDs(); err != nil {
+		return nil, err
+	}
+
 	pbft.stateMigSig = make(chan model.States, 1)
-	pbft.broadcastSig = make(chan *model.PbftMessage, 1)
+	pbft.broadcastSig = make(chan *model.PbftMessage, 100)
 	pbft.txPool = txPool
 
 	pbft.switcher = switcher

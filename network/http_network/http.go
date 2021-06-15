@@ -168,8 +168,16 @@ func (hn *HTTPNetWork) RegisterOnReceive(modelID string, callBack network.OnRece
 	return nil
 }
 
-func (hn *HTTPNetWork) Peers() ([]string, error) {
-	return hn.PeerIDs, nil
+func (hn *HTTPNetWork) Peers() ([]*network.Peer, error) {
+	peers := make([]*network.Peer, 0)
+	for i := range hn.Addrs {
+		peers = append(peers, &network.Peer{
+			ID:      hn.PeerIDs[i],
+			Address: hn.Addrs[i],
+		})
+
+	}
+	return peers, nil
 }
 
 func (hn *HTTPNetWork) Recv() {
