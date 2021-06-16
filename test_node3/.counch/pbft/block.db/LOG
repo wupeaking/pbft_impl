@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 =============== Jun 16, 2021 (CST) ===============
 16:22:29.082228 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
 16:22:29.090966 db@open opening
@@ -68,3 +69,11 @@
 17:31:30.153182 version@stat F·[1] S·356B[356B] Sc·[0.25]
 17:31:30.164760 db@janitor F·3 G·0
 17:31:30.164888 db@open done T·13.131421ms
+=======
+=============== Jun 15, 2021 (CST) ===============
+23:23:35.661009 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+23:23:35.665606 db@open opening
+23:23:35.666453 version@stat F·[] S·0B[] Sc·[]
+23:23:35.668301 db@janitor F·2 G·0
+23:23:35.668384 db@open done T·2.733148ms
+>>>>>>> 45f79558c8d8f4bc4e88cf1ec8cd72bef01991ec

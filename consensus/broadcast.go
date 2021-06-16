@@ -80,8 +80,11 @@ func (pbft *PBFT) BroadcastMsgRoutine() {
 							//continue
 						}
 					}
+					pbft.logger.Debugf("广播到peer: %s viewchanges", p.ID)
 					pbft.broadcastStateMsgToPeer(pbft.curBroadcastMsg, p)
 				}
+			default:
+				pbft.logger.Warnf("未识别的消息类型")
 			}
 
 		case msg := <-pbft.broadcastSig:
