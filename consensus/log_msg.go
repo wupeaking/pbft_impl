@@ -55,6 +55,7 @@ func (lm LogBlockCollection) ResetBlock(num uint64) {
 	lm[num] = nil
 }
 
+// false 表示已近存在
 func (pbft *PBFT) appendLogMsg(msg *model.PbftMessage) bool {
 	content := msg.GetGeneric()
 	signer := pbft.GetMsgSigner(msg)
@@ -95,7 +96,7 @@ func (pbft *PBFT) appendLogMsg(msg *model.PbftMessage) bool {
 			pbft.sm.logBlock[content.Info.SeqNum] = logBlks
 		}
 
-		pbft.logger.Debugf("追加日志高度: %d, 日志类型: %s", content.Info.SeqNum, content.Info.GetMsgType())
+		// pbft.logger.Debugf("追加日志高度: %d, 日志类型: %s", content.Info.SeqNum, content.Info.GetMsgType())
 		pbft.sm.logMsg[content.Info.SeqNum] = logMsgs
 		return true
 	}

@@ -32,6 +32,7 @@ func NewBlockPool(ws *world_state.WroldState, switcher network.SwitcherI) *Block
 		switcher:         switcher,
 		ws:               ws,
 		heightPeers:      make(map[*network.Peer]uint64),
+		numBlock:         make(map[uint64]*model.PbftBlock),
 		newBlock:         make(chan *model.PbftBlock),
 		addBlock:         make(chan *model.PbftBlock),
 		startEngine:      make(chan struct{}, 1),
@@ -64,7 +65,10 @@ func (bp *BlockPool) AddBlock(peer *network.Peer, block *model.PbftBlock) {
 	}
 	bp.addBlock <- block
 
+	bp.RLock()
 	complate := bp.requestComplate[block.BlockNum]
+	bp.RUnlock()
+
 	if complate != nil {
 		select {
 		case complate <- struct{}{}:
@@ -187,7 +191,9 @@ func (bp *BlockPool) downRoutine(num uint64) {
 		Msg:     body,
 	}
 	complatedSig := make(chan struct{}, 1)
+	bp.Lock()
 	bp.requestComplate[num] = complatedSig
+	bp.Unlock()
 
 	peer := bp.pickPeer(num, nil)
 	bp.switcher.BroadcastToPeer("blockchain", &msg, peer)
@@ -197,7 +203,9 @@ func (bp *BlockPool) downRoutine(num uint64) {
 	for {
 		select {
 		case <-complatedSig:
+			bp.Lock()
 			delete(bp.requestComplate, num)
+			bp.Unlock()
 			return
 		case <-timeout.C:
 			// 重新挑选一个peer  再次广播

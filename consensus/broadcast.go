@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"bytes"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -31,7 +32,7 @@ func (pbft *PBFT) AddBroadcastTask(msg *model.PbftMessage) {
 
 // 定时广播 由于网路原因 可能会导致一些节点不能一次成功收到消息 多次进行广播
 func (pbft *PBFT) BroadcastMsgRoutine() {
-	t := time.NewTicker(2 * time.Second)
+	t := time.NewTicker(4 * time.Second)
 	for {
 		select {
 		case <-t.C:
@@ -45,9 +46,8 @@ func (pbft *PBFT) BroadcastMsgRoutine() {
 			if pbft.curBroadcastMsg == nil {
 				continue
 			}
-			switch {
-			case pbft.curBroadcastMsg.GetGeneric() != nil:
-				content := pbft.curBroadcastMsg.GetGeneric()
+			switch content := getPbftMsg(pbft.curBroadcastMsg).(type) {
+			case *model.PbftGenericMessage:
 				msgInfo := content.GetInfo()
 				signers := pbft.sm.logMsg.FindMsg(msgInfo.GetSeqNum(), msgInfo.GetMsgType(), int(msgInfo.GetView()))
 				if len(signers) >= pbft.minNodeNum() {
@@ -55,14 +55,17 @@ func (pbft *PBFT) BroadcastMsgRoutine() {
 				}
 				peers, _ := pbft.switcher.Peers()
 				for _, p := range peers {
-					if _, ok := pbft.verifierPeerID[p.ID]; ok {
-						continue
+					if sig, ok := pbft.verifierPeerID[p.ID]; ok {
+						// 说明这个节点是验证节点
+						// 如果接收到了这个节点发送的消息 那么认为这个节点也收到了本节点发送的消息 就不再往此节点发送消息
+						if _, ok := signers[sig]; ok {
+							//continue
+						}
 					}
 					pbft.broadcastStateMsgToPeer(pbft.curBroadcastMsg, p)
 				}
 
-			case pbft.curBroadcastMsg.GetViewChange() != nil:
-				content := pbft.curBroadcastMsg.GetViewChange()
+			case *model.PbftViewChange:
 				msgInfo := content.GetInfo()
 				signers := pbft.sm.logMsg.FindMsg(msgInfo.GetSeqNum(), msgInfo.GetMsgType(), int(msgInfo.GetView()))
 				if len(signers) >= pbft.minNodeNum() {
@@ -70,17 +73,22 @@ func (pbft *PBFT) BroadcastMsgRoutine() {
 				}
 				peers, _ := pbft.switcher.Peers()
 				for _, p := range peers {
-					if _, ok := pbft.verifierPeerID[p.ID]; ok {
-						continue
+					if sig, ok := pbft.verifierPeerID[p.ID]; ok {
+						// 说明这个节点是验证节点
+						// 如果接收到了这个节点发送的消息 那么认为这个节点也收到了本节点发送的消息 就不再往此节点发送消息
+						if _, ok := signers[sig]; ok {
+							//continue
+						}
 					}
 					pbft.broadcastStateMsgToPeer(pbft.curBroadcastMsg, p)
 				}
 			}
 
 		case msg := <-pbft.broadcastSig:
-			// todo:: 根据实际情况 判断是否需要广播
+			//根据实际情况 判断是否需要广播
 			// 1. 如果是第一次广播此消息 则全部广播
-			if msg != pbft.curBroadcastMsg {
+			if !pbft.compareMsg(msg, pbft.curBroadcastMsg) {
+				// pbft.logger.Debugf("此次广播的消息和上次广播的消息不一致  msg: %#v, lastMsg: %#v", msg, pbft.curBroadcastMsg)
 				pbft.broadcastStateMsg(pbft.curBroadcastMsg)
 				pbft.curBroadcastMsg = msg
 				continue
@@ -89,41 +97,47 @@ func (pbft *PBFT) BroadcastMsgRoutine() {
 			// 已经不是第一次广播此消息
 			// 2. 当前类型消息 是否接收到其他节点发送过来 如果任意一个也没收到 则全网广播
 			// 3. 如果收到某些验证节点发送的 则只向没有收到的验证节点广播
-			switch {
-			case msg.GetGeneric() != nil:
-				content := msg.GetGeneric()
-				msgInfo := content.GetInfo()
-				signers := pbft.sm.logMsg.FindMsg(msgInfo.GetSeqNum(), msgInfo.GetMsgType(), int(msgInfo.GetView()))
-				if len(signers) >= pbft.minNodeNum() {
-					pbft.curBroadcastMsg = msg
-					continue
-				}
-				peers, _ := pbft.switcher.Peers()
-				for _, p := range peers {
-					if _, ok := pbft.verifierPeerID[p.ID]; ok {
-						continue
-					}
-					pbft.broadcastStateMsgToPeer(msg, p)
-				}
-				pbft.curBroadcastMsg = msg
+			// switch content := getPbftMsg(msg).(type) {
+			// case *model.PbftGenericMessage:
+			// 	msgInfo := content.GetInfo()
+			// 	signers := pbft.sm.logMsg.FindMsg(msgInfo.GetSeqNum(), msgInfo.GetMsgType(), int(msgInfo.GetView()))
+			// 	if len(signers) >= pbft.minNodeNum() {
+			// 		pbft.curBroadcastMsg = msg
+			// 		continue
+			// 	}
+			// 	peers, _ := pbft.switcher.Peers()
+			// 	for _, p := range peers {
+			// 		if sig, ok := pbft.verifierPeerID[p.ID]; ok {
+			// 			// 说明这个节点是验证节点
+			// 			// 如果接收到了这个节点发送的消息 那么认为这个节点也收到了本节点发送的消息 就不再往此节点发送消息
+			// 			if _, ok := signers[sig]; ok {
+			// 				continue
+			// 			}
+			// 		}
+			// 		pbft.broadcastStateMsgToPeer(msg, p)
+			// 	}
+			// 	pbft.curBroadcastMsg = msg
 
-			case msg.GetViewChange() != nil:
-				content := msg.GetViewChange()
-				msgInfo := content.GetInfo()
-				signers := pbft.sm.logMsg.FindMsg(msgInfo.GetSeqNum(), msgInfo.GetMsgType(), int(msgInfo.GetView()))
-				if len(signers) >= pbft.minNodeNum() {
-					pbft.curBroadcastMsg = msg
-					continue
-				}
-				peers, _ := pbft.switcher.Peers()
-				for _, p := range peers {
-					if _, ok := pbft.verifierPeerID[p.ID]; ok {
-						continue
-					}
-					pbft.broadcastStateMsgToPeer(msg, p)
-				}
-				pbft.curBroadcastMsg = msg
-			}
+			// case *model.PbftViewChange:
+			// 	msgInfo := content.GetInfo()
+			// 	signers := pbft.sm.logMsg.FindMsg(msgInfo.GetSeqNum(), msgInfo.GetMsgType(), int(msgInfo.GetView()))
+			// 	if len(signers) >= pbft.minNodeNum() {
+			// 		pbft.curBroadcastMsg = msg
+			// 		continue
+			// 	}
+			// 	peers, _ := pbft.switcher.Peers()
+			// 	for _, p := range peers {
+			// 		if sig, ok := pbft.verifierPeerID[p.ID]; ok {
+			// 			// 说明这个节点是验证节点
+			// 			// 如果接收到了这个节点发送的消息 那么认为这个节点也收到了本节点发送的消息 就不再往此节点发送消息
+			// 			if _, ok := signers[sig]; ok {
+			// 				continue
+			// 			}
+			// 		}
+			// 		pbft.broadcastStateMsgToPeer(msg, p)
+			// 	}
+			// 	pbft.curBroadcastMsg = msg
+			// }
 		}
 	}
 }
@@ -138,6 +152,7 @@ func (pbft *PBFT) broadcastStateMsg(msg *model.PbftMessage) error {
 		MsgType: model.BroadcastMsgType_send_pbft_msg,
 		Msg:     body,
 	}
+	// pbft.logger.Debugf("向所有节点广播消息")
 	return pbft.switcher.Broadcast("consensus", &msgPkg)
 }
 
@@ -151,5 +166,52 @@ func (pbft *PBFT) broadcastStateMsgToPeer(msg *model.PbftMessage, peer *network.
 		MsgType: model.BroadcastMsgType_send_pbft_msg,
 		Msg:     body,
 	}
+	// pbft.logger.Debugf("向%s广播消息", peer.ID)
 	return pbft.switcher.BroadcastToPeer("consensus", &msgPkg, peer)
+}
+
+// compareMsg 比较两个消息是否是同一个消息 同时返回msgA的实际类型
+func (pbft *PBFT) compareMsg(msgA *model.PbftMessage, msgB *model.PbftMessage) bool {
+	mA := getPbftMsg(msgA)
+	mB := getPbftMsg(msgB)
+	switch ma := mA.(type) {
+	case *model.PbftGenericMessage:
+		mb, ok := mB.(*model.PbftGenericMessage)
+		if !ok {
+			// pbft.logger.Debugf("ma :%v mb: %v", ma, mb)
+			return false
+		}
+		if ma.GetInfo().GetMsgType() == mb.GetInfo().GetMsgType() &&
+			ma.GetInfo().GetSeqNum() == mb.GetInfo().GetSeqNum() &&
+			ma.GetInfo().GetView() == mb.GetInfo().GetView() &&
+			bytes.Compare(ma.GetInfo().GetSignerId(), mb.GetInfo().GetSignerId()) == 0 {
+			return true
+		}
+		return false
+	case *model.PbftViewChange:
+		mb, ok := mB.(*model.PbftViewChange)
+		if !ok {
+			// pbft.logger.Debugf("ma :%v mb: %v", ma, mb)
+			return false
+		}
+		if ma.GetInfo().GetMsgType() == mb.GetInfo().GetMsgType() &&
+			ma.GetInfo().GetSeqNum() == mb.GetInfo().GetSeqNum() &&
+			ma.GetInfo().GetView() == mb.GetInfo().GetView() &&
+			bytes.Compare(ma.GetInfo().GetSignerId(), mb.GetInfo().GetSignerId()) == 0 {
+			return true
+		}
+		// pbft.logger.Debugf("ma :%v mb: %v", ma, mb)
+	}
+
+	return false
+}
+
+func getPbftMsg(msg *model.PbftMessage) interface{} {
+	if m := msg.GetGeneric(); m != nil {
+		return m
+	}
+	if m := msg.GetViewChange(); m != nil {
+		return m
+	}
+	return nil
 }

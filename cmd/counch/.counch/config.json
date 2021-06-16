@@ -1,0 +1,42 @@
+{
+    "consensus":{
+        "publicKey": "0xc4024ffd0b42495f49002b5da606512aee341c53e43a641b7d8efac8e29f6ed2d5c6449fe4343f41c5216a84ea9dd43e07daeeadb38556bb19527ce699394cd7",
+        "privateKey": "0xf25ccbf8a1bb36594d5f63e9564ca4c5d965ccf8b418e8717f2f68b600cf6a34",
+        "verfiers": [
+            {
+                "publicKey": "0xc4024ffd0b42495f49002b5da606512aee341c53e43a641b7d8efac8e29f6ed2d5c6449fe4343f41c5216a84ea9dd43e07daeeadb38556bb19527ce699394cd7"
+            },
+            {
+                "publicKey": "0x302404eeb2e3d1e75f78f426836cb6ee741d735153e441f1f43fbec55b4482c6d2d59017e608b995ba32255b31c49b646d59834537b9c2efb7cd66c64250c5b2"
+            },
+            {
+                "publicKey": "0x5ca153355f800c66150130b8becb951856e408555829eb07de89d3ed35fdd85872923fd9c51444ace5df3d6ce331da676a5e90596e7952f3f4a05c623bc00d77"
+            }
+        ],
+        "coordinator": {
+            "publicKey": "0x84813ee6d837adf74def43d40fc52b999a22d7c6cae66fbd6d4592fd91d67858d90afbab162bf063f46089603cf771669354177d82ee852aeddea6f8682a15c7",
+            "privateKey": "0xa665c8da936eba27a48eae8c5f6d862e017c8b47715a11b0267570631af09d59"
+        },
+        "logLevel": "debug"
+    },
+    "transaction":{
+        "maxTxNum": 10000,
+        "logLevel": "Info"
+    },
+    "network":{
+        "netMode": "http",
+        "localAddr": "127.0.0.1:19876",
+	    "nodeAddrs": [
+            {"address": "http://127.0.0.1:29876", "peerID": "QmahEELfqnuyAPskC8dzyNCHd3n5QBRnTjWg2mrTCuWvqE"},
+            {"address": "http://127.0.0.1:39876", "peerID": "QmT98Bn4wjjJEmfKNZBKMRqRE4uH7nv1LFUn4aUUpD8EHA"}
+        ],
+        "publicKey": "0xc4024ffd0b42495f49002b5da606512aee341c53e43a641b7d8efac8e29f6ed2d5c6449fe4343f41c5216a84ea9dd43e07daeeadb38556bb19527ce699394cd7",
+        "privateKey": "0xf25ccbf8a1bb36594d5f63e9564ca4c5d965ccf8b418e8717f2f68b600cf6a34",
+        "logLevel": "info",
+        "bootstrap": false
+    },
+    "db":{
+        "storageEngine": "leveldb",
+        "logLevel": "Debug"
+    }
+}

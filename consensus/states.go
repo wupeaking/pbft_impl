@@ -162,12 +162,16 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		}
 
 		// 对blk签名
-		blk, err := pbft.signBlock(blk)
-		if err != nil {
-			pbft.logger.Warnf("当前节点处于PrePreparing 对区块进行签名是发生错误 err: %v",
-				err)
-			return
+		if blk != nil {
+			b, err := pbft.signBlock(blk)
+			if err != nil {
+				pbft.logger.Warnf("当前节点处于PrePreparing 对区块进行签名是发生错误 err: %v",
+					err)
+				return
+			}
+			blk = b
 		}
+
 		// 广播prepare消息 切换到preparing状态  重置超时 等待接收足够多的prepare消息
 		// 向所有验证者发起prepare 消息
 		newMsg := model.PbftGenericMessage{
@@ -316,7 +320,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		msgBysigners := pbft.sm.logMsg.FindMsg(pbft.ws.BlockNum+1, model.MessageType_ViewChange, int(pbft.ws.View))
 		if len(msgBysigners) == 0 {
 			pbft.logger.Debugf("当前状态为%s 暂未收到%s类型消息",
-				model.States_name[int32(curState)], model.States_name[int32(model.MessageType_Commit)])
+				model.States_name[int32(curState)], model.States_name[int32(model.States_ViewChanging)])
 			return
 		}
 		var newMsg model.PbftViewChange
@@ -327,7 +331,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		}
 		signedMsg, err := pbft.SignMsg(model.NewPbftMessage(&newMsg))
 		if err != nil {
-			pbft.logger.Debugf("当前状态为 %s, 发起commit消息时 在签名过程中发生错误 err: %v ",
+			pbft.logger.Debugf("当前状态为 %s, 发起ViewChange消息时 在签名过程中发生错误 err: %v ",
 				model.States_name[int32(curState)], err)
 			return
 		}
