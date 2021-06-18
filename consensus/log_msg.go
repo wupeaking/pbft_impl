@@ -174,28 +174,64 @@ func (pbft *PBFT) FindBlock(num, view uint64) *model.PbftBlock {
 	return pbft.mm.BlockMsg[fmt.Sprintf("%d-%d", num, view)]
 }
 
-func (pbft *PBFT) FindStateMsg(num, view uint64, msgType model.MessageType) ([]*model.PbftGenericMessage, []*model.PbftViewChange) {
+func (pbft *PBFT) FindStateMsg(num, view uint64, msgType model.MessageType) []*StateMsg {
 	pbft.mm.StateMsgLock.RLock()
 	defer pbft.mm.StateMsgLock.RUnlock()
 	msgs := pbft.mm.StateMsgs[fmt.Sprintf("%d-%d", num, view)]
-	if msgType == model.MessageType_ViewChange {
-		rets := make([]*model.PbftViewChange, 0)
-		for i := range msgs {
-			if msgs[i].MsgType == msgType {
-				rets = append(rets, msgs[i].ViewChangeMsg)
-			}
-			return nil, rets
-		}
-	}
-
-	rets := make([]*model.PbftGenericMessage, 0)
+	rets := make([]*StateMsg, 0)
 	for i := range msgs {
 		if msgs[i].MsgType == msgType {
-			rets = append(rets, msgs[i].GenericMsg)
+			rets = append(rets, msgs[i])
 		}
-		return rets, nil
 	}
-	return nil, nil
+	return rets
+
+	// if msgType == model.MessageType_ViewChange {
+	// 	rets := make([]*model.PbftViewChange, 0)
+	// 	for i := range msgs {
+	// 		if msgs[i].MsgType == msgType {
+	// 			rets = append(rets, msgs[i].ViewChangeMsg)
+	// 		}
+	// 		return nil, rets
+	// 	}
+	// }
+
+	// rets := make([]*model.PbftGenericMessage, 0)
+	// for i := range msgs {
+	// 	if msgs[i].MsgType == msgType {
+	// 		rets = append(rets, msgs[i].GenericMsg)
+	// 	}
+	// 	return rets, nil
+	// }
+	// return nil, nil
+}
+
+func (pbft *PBFT) FindStateMsgBySinger(num, view uint64, msgType model.MessageType, signer []byte) *StateMsg {
+	pbft.mm.StateMsgLock.RLock()
+	defer pbft.mm.StateMsgLock.RUnlock()
+	msgs := pbft.mm.StateMsgs[fmt.Sprintf("%d-%d", num, view)]
+	for i := range msgs {
+		if msgs[i].MsgType == msgType && bytes.Compare(signer, msgs[i].Signer) == 0 {
+			return msgs[i]
+		}
+	}
+	return nil
+
+	// if msgType == model.MessageType_ViewChange {
+	// 	for i := range msgs {
+	// 		if msgs[i].MsgType == msgType && bytes.Compare(signer, msgs[i].Signer) == 0 {
+	// 			return nil, msgs[i].ViewChangeMsg
+	// 		}
+	// 	}
+	// 	return nil, nil
+	// }
+
+	// for i := range msgs {
+	// 	if msgs[i].MsgType == msgType && bytes.Compare(signer, msgs[i].Signer) == 0 {
+	// 		return msgs[i].GenericMsg, nil
+	// 	}
+	// }
+	// return nil, nil
 }
 
 type LogGroupByType map[string]LogGroupBySigner
