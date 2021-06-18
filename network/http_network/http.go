@@ -104,12 +104,12 @@ func (hn *HTTPNetWork) Broadcast(modelID string, msg *network.BroadcastMsg) erro
 		return err
 	}
 	// logger.Debugf("modeID: %s requestbody: %s", modelID, string(requestBody))
-	request := gorequest.New()
 	switch msg.MsgType {
 	case model.BroadcastMsgType_send_pbft_msg, model.BroadcastMsgType_send_block_meta,
 		model.BroadcastMsgType_send_tx, model.BroadcastMsgType_request_load_block:
 		go func() {
 			for _, addr := range hn.Addrs {
+				request := gorequest.New()
 				logger.Debugf("向%s发起请求", addr)
 				request.Post(addr + "/broadcast")
 				// 必须在Method之后 添加头 这个包坑太多
@@ -133,13 +133,13 @@ func (hn *HTTPNetWork) BroadcastToPeer(modelID string, msg *network.BroadcastMsg
 	if err != nil {
 		return err
 	}
-	request := gorequest.New()
 
 	switch msg.MsgType {
 	case model.BroadcastMsgType_send_pbft_msg, model.BroadcastMsgType_send_block_meta,
 		model.BroadcastMsgType_send_tx, model.BroadcastMsgType_request_load_block,
 		model.BroadcastMsgType_send_specific_block:
 		go func() {
+			request := gorequest.New()
 			logger.Debugf("向%s发起请求", p.Address)
 			request.Post(p.Address + "/broadcast")
 			// 必须在Method之后 添加头 这个包坑太多

@@ -40,52 +40,14 @@ func (pbft *PBFT) BroadcastMsgRoutine() {
 			if pbft.StopFlag {
 				continue
 			}
-			if pbft.CurrentState() == model.States_NotStartd {
+			if pbft.CurrentState() != model.States_ViewChanging {
 				continue
 			}
+
 			if pbft.curBroadcastMsg == nil {
 				continue
 			}
-			switch content := getPbftMsg(pbft.curBroadcastMsg).(type) {
-			case *model.PbftGenericMessage:
-				msgInfo := content.GetInfo()
-				signers := pbft.sm.logMsg.FindMsg(msgInfo.GetSeqNum(), msgInfo.GetMsgType(), int(msgInfo.GetView()))
-				if len(signers) >= pbft.minNodeNum() {
-					continue
-				}
-				peers, _ := pbft.switcher.Peers()
-				for _, p := range peers {
-					if sig, ok := pbft.verifierPeerID[p.ID]; ok {
-						// 说明这个节点是验证节点
-						// 如果接收到了这个节点发送的消息 那么认为这个节点也收到了本节点发送的消息 就不再往此节点发送消息
-						if _, ok := signers[sig]; ok {
-							//continue
-						}
-					}
-					pbft.broadcastStateMsgToPeer(pbft.curBroadcastMsg, p)
-				}
-
-			case *model.PbftViewChange:
-				msgInfo := content.GetInfo()
-				signers := pbft.sm.logMsg.FindMsg(msgInfo.GetSeqNum(), msgInfo.GetMsgType(), int(msgInfo.GetView()))
-				if len(signers) >= pbft.minNodeNum() {
-					continue
-				}
-				peers, _ := pbft.switcher.Peers()
-				for _, p := range peers {
-					if sig, ok := pbft.verifierPeerID[p.ID]; ok {
-						// 说明这个节点是验证节点
-						// 如果接收到了这个节点发送的消息 那么认为这个节点也收到了本节点发送的消息 就不再往此节点发送消息
-						if _, ok := signers[sig]; ok {
-							//continue
-						}
-					}
-					pbft.logger.Debugf("广播到peer: %s viewchanges", p.ID)
-					pbft.broadcastStateMsgToPeer(pbft.curBroadcastMsg, p)
-				}
-			default:
-				pbft.logger.Warnf("未识别的消息类型")
-			}
+			pbft.broadcastStateMsg(pbft.curBroadcastMsg)
 
 		case msg := <-pbft.broadcastSig:
 			//根据实际情况 判断是否需要广播

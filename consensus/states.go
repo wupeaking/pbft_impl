@@ -26,9 +26,9 @@ func (pbft *PBFT) ChangeState(s model.States) {
 		pbft.sm.logBlock.ResetBlock(pbft.ws.BlockNum + 1)
 	}
 	if s == model.States_NotStartd {
-		if !pbft.timer.Stop() {
+		if !pbft.stateTimeout.Stop() {
 			select {
-			case <-pbft.timer.C: // try to drain the channel
+			case <-pbft.stateTimeout.C: // try to drain the channel
 			default:
 			}
 		}
@@ -42,13 +42,13 @@ func (pbft *PBFT) ChangeState(s model.States) {
 	pbft.sm.state = s
 	pbft.sm.Unlock()
 	if s != model.States_NotStartd && s != model.States_ViewChanging {
-		if !pbft.timer.Stop() {
+		if !pbft.stateTimeout.Stop() {
 			select {
-			case <-pbft.timer.C: // try to drain the channel
+			case <-pbft.stateTimeout.C: // try to drain the channel
 			default:
 			}
 		}
-		pbft.timer.Reset(10 * time.Second)
+		pbft.stateTimeout.Reset(10 * time.Second)
 		pbft.logger.Debugf("重置超时...")
 	}
 }
@@ -68,12 +68,12 @@ func NewStateMachine() *StateMachine {
 
 //Migrate  状态转移
 func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
-
-	if !pbft.VerfifyMsg(msg) {
+	if msg != nil && !pbft.VerfifyMsg(msg) {
 		pbft.logger.Warnf("接收到无效的msg")
 		return
+	} else {
+		pbft.appendLogMsg(msg)
 	}
-	pbft.appendLogMsg(msg)
 
 	curState := pbft.CurrentState()
 	switch curState {
