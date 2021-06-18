@@ -10,9 +10,9 @@ import (
 type StateMachine struct {
 	state model.States
 	sync.Mutex
-	// 区块编号  <---->  接收到的消息日志 (消息类型-视图编号: 消息)
-	logMsg   LogMsgCollection
-	logBlock LogBlockCollection
+	// // 区块编号  <---->  接收到的消息日志 (消息类型-视图编号: 消息)
+	// logMsg   LogMsgCollection
+	// logBlock LogBlockCollection
 	// Receive
 	receivedBlock *model.PbftBlock
 	changeSig     chan model.States
@@ -23,7 +23,7 @@ func (pbft *PBFT) ChangeState(s model.States) {
 		model.States_name[int32(pbft.sm.state)], model.States_name[int32(s)])
 	if s == model.States_NotStartd || s == model.States_ViewChanging {
 		pbft.sm.receivedBlock = nil
-		pbft.sm.logBlock.ResetBlock(pbft.ws.BlockNum + 1)
+		// pbft.sm.logBlock.ResetBlock(pbft.ws.BlockNum + 1)
 	}
 	if s == model.States_NotStartd {
 		if !pbft.stateTimeout.Stop() {
@@ -59,9 +59,9 @@ func (pbft *PBFT) CurrentState() model.States {
 
 func NewStateMachine() *StateMachine {
 	return &StateMachine{
-		state:     model.States_NotStartd,
-		logMsg:    make(map[uint64]LogGroupByType),
-		logBlock:  make(LogBlockCollection),
+		state: model.States_NotStartd,
+		// logMsg:    make(map[uint64]LogGroupByType),
+		// logBlock:  make(LogBlockCollection),
 		changeSig: make(chan model.States, 1),
 	}
 }
@@ -72,14 +72,18 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		pbft.logger.Warnf("接收到无效的msg")
 		return
 	} else {
-		pbft.appendLogMsg(msg)
+		ok := pbft.AppendMsg(msg)
+		if !ok {
+			// 说明消息已经追加过 不在触发状态处理
+			return
+		}
 	}
 
 	curState := pbft.CurrentState()
 	switch curState {
 	case model.States_NotStartd:
 		// 处于此状态 期望接收到 新区块提议
-		msgBysigners := pbft.sm.logMsg.FindMsg(pbft.ws.BlockNum+1, model.MessageType_NewBlockProposal, int(pbft.ws.View))
+		msgBysigners, _ := pbft.FindStateMsg(pbft.ws.BlockNum+1, pbft.ws.View, model.MessageType_NewBlockProposal)
 		if len(msgBysigners) == 0 {
 			pbft.logger.Debugf("当前状态为%s 暂未收到%s类型消息",
 				model.States_name[int32(curState)], model.MessageType_name[int32(model.MessageType_NewBlockProposal)])
