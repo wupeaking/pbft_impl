@@ -126,6 +126,7 @@ func (pbft *PBFT) verfifyBlock(blk *model.PbftBlock) bool {
 		Content:   blk.Content,
 		TimeStamp: blk.TimeStamp,
 		BlockId:   "",
+		View:      blk.View,
 	}
 
 	content, _ := proto.Marshal(&b)
@@ -155,6 +156,7 @@ func (pbft *PBFT) VerfifyMostBlock(blk *model.PbftBlock) bool {
 		Content:   blk.Content,
 		TimeStamp: blk.TimeStamp,
 		BlockId:   "",
+		View:      blk.View,
 	}
 
 	content, _ := proto.Marshal(&b)
@@ -329,6 +331,7 @@ func (pbft *PBFT) signBlock(blk *model.PbftBlock) (*model.PbftBlock, error) {
 		Content:   blk.Content,
 		TimeStamp: blk.TimeStamp,
 		BlockId:   "",
+		View:      blk.View,
 	}
 	content, _ := proto.Marshal(&b)
 	sh := sha256.New()

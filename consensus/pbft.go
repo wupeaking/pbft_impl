@@ -32,6 +32,7 @@ import (
 type PBFT struct {
 	// 当前所属状态
 	sm               *StateMachine
+	mm               *MsgManager
 	verifiers        map[string]*model.Verifier
 	verifierPeerID   map[string]string // peerID --- string(singer)
 	Msgs             *MsgQueue
@@ -193,22 +194,6 @@ func (pbft *PBFT) Daemon() {
 			pbft.requestNewBlockProposal()
 		}
 
-	}
-}
-
-// 定时清除无用的logMsg
-func (pbft *PBFT) garbageCollection() {
-	for {
-		select {
-		case <-time.After(10 * time.Second):
-			for key := range pbft.sm.logMsg {
-				// 保留个阈值
-				if key+10 < pbft.ws.BlockNum {
-					pbft.logger.Debugf("删除key: %v", key)
-					delete(pbft.sm.logMsg, key)
-				}
-			}
-		}
 	}
 }
 

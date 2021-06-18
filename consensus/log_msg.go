@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"bytes"
 	"fmt"
 	"sync"
 	"time"
@@ -16,16 +17,22 @@ import (
 
 type MsgManager struct {
 	// block_num-view : blk
-	BlockMsg  map[string]*model.PbftBlock
-	StateMsgs map[string][]*StateMsg
-	BlockView map[uint64][]int
+	BlockMsg      map[string]*model.PbftBlock
+	BlockMsgLock  sync.RWMutex
+	StateMsgs     map[string][]*StateMsg
+	StateMsgLock  sync.RWMutex
+	BlockView     map[uint64]map[uint64]struct{}
+	BlockViewLock sync.RWMutex
 }
 
 func NewMsgManager() *MsgManager {
 	return &MsgManager{
-		BlockMsg:  make(map[string]*model.PbftBlock),
-		StateMsgs: make(map[string][]*StateMsg),
-		BlockView: make(map[uint64][]int),
+		BlockMsg:      make(map[string]*model.PbftBlock),
+		BlockMsgLock:  sync.RWMutex{},
+		StateMsgs:     make(map[string][]*StateMsg),
+		StateMsgLock:  sync.RWMutex{},
+		BlockView:     make(map[uint64]map[uint64]struct{}),
+		BlockViewLock: sync.RWMutex{},
 	}
 }
 
@@ -40,8 +47,84 @@ type StateMsg struct {
 	sync.RWMutex       //
 }
 
-func (mm *MsgManager) addMsg(blkNum uint64, view int, msgType model.MessageType,
+func (mm *MsgManager) addMsg(blkNum uint64, view uint64, msgType model.MessageType,
 	signer []byte, msg *model.PbftMessage, gm *model.PbftGenericMessage, vc *model.PbftViewChange) bool {
+	stateMsgKey := fmt.Sprintf("%d-%d", blkNum, view)
+	mm.StateMsgLock.Lock()
+	defer mm.StateMsgLock.Unlock()
+
+	msgs, ok := mm.StateMsgs[stateMsgKey]
+	if !ok {
+		stateMsg := StateMsg{
+			MsgType:       msgType,
+			Msg:           msg,
+			GenericMsg:    gm,
+			ViewChangeMsg: vc,
+			Signer:        signer,
+			Broadcast:     false,
+			Readed:        false,
+		}
+		mm.StateMsgs[stateMsgKey] = []*StateMsg{&stateMsg}
+		mm.addBlockView(blkNum, view)
+		return true
+	}
+
+	exist := false
+	for i := range msgs {
+		if msgs[i].MsgType == msgType && bytes.Compare(msgs[i].Signer, signer) == 0 {
+			exist = true
+			break
+		}
+	}
+	if exist {
+		return false
+	}
+	msgs = append(msgs, &StateMsg{
+		MsgType:       msgType,
+		Msg:           msg,
+		GenericMsg:    gm,
+		ViewChangeMsg: vc,
+		Signer:        signer,
+		Broadcast:     false,
+		Readed:        false,
+	})
+	mm.StateMsgs[stateMsgKey] = msgs
+	mm.addBlockView(blkNum, view)
+	return true
+}
+
+func (mm *MsgManager) addBlockView(blkNum, view uint64) {
+	mm.BlockViewLock.Lock()
+	defer mm.BlockViewLock.Unlock()
+	views, ok := mm.BlockView[blkNum]
+	if !ok {
+		views := make(map[uint64]struct{})
+		views[view] = struct{}{}
+		mm.BlockView[blkNum] = views
+		return
+	}
+	views[view] = struct{}{}
+	mm.BlockView[blkNum] = views
+	return
+}
+
+func (mm *MsgManager) addBlock(blkNum uint64, view uint64, block *model.PbftBlock) bool {
+	blkMsgKey := fmt.Sprintf("%d-%d", blkNum, view)
+	mm.BlockMsgLock.Lock()
+	defer mm.BlockMsgLock.Unlock()
+
+	blk, ok := mm.BlockMsg[blkMsgKey]
+	if !ok {
+		mm.BlockMsg[blkMsgKey] = blk
+		mm.addBlockView(blkNum, view)
+		return true
+	}
+	// 如果区块的视图编号比起更大  todo::: 这里似乎有些问题
+	if len(blk.SignPairs) < len(block.SignPairs) || blk.View < block.View {
+		mm.BlockMsg[blkMsgKey] = block
+		mm.addBlockView(blkNum, view)
+		return true
+	}
 	return false
 }
 
@@ -55,51 +138,32 @@ func (pbft *PBFT) AppendMsg(msg *model.PbftMessage) bool {
 		for i := range content.OtherInfos {
 			pbft.AppendMsg(model.NewPbftMessage(&model.PbftGenericMessage{Info: content.OtherInfos[i]}))
 		}
-		logMsgs := pbft.sm.logMsg[content.Info.SeqNum]
-		if logMsgs == nil {
-			logMsgs = make(LogGroupByType)
-		}
-		typeView := fmt.Sprintf("%d-%d", content.Info.MsgType, content.Info.View)
-		msgBySinger := logMsgs[typeView]
-		if msgBySinger == nil {
-			msgBySinger = make(LogGroupBySigner)
-		}
-		msgBySinger[string(signer)] = LogMessage{
-			MessageType: content.Info.MsgType,
-			msg:         msg,
-			view:        content.Info.View,
-		}
-		logMsgs[typeView] = msgBySinger
+		addMsgOk := pbft.mm.addMsg(content.Info.SeqNum, content.Info.View,
+			content.Info.MsgType, content.Info.SignerId, msg, content, nil)
 
 		if content.Block != nil {
-			logBlks := pbft.sm.logBlock[content.Info.SeqNum]
-			if logBlks == nil {
-				logBlks = make(map[int]*model.PbftBlock)
+			// 判断提议者签名是否正确
+			primary := (pbft.ws.BlockNum + 1 + pbft.ws.View) % uint64(len(pbft.ws.Verifiers))
+			if len(pbft.ws.Verifiers) == 1 {
+				primary = 0
 			}
-			logBlks[len(content.Block.SignPairs)] = content.Block
-			pbft.sm.logBlock[content.Info.SeqNum] = logBlks
+			if bytes.Compare(pbft.ws.Verifiers[primary].PublickKey, content.Block.SignerId) != 0 {
+				pbft.logger.Debugf("添加区块消息失败 因为当前区块的主签名不一致和计算的主签名不是同一个 blockNum: %d, view: %d, primary: %d",
+					content.Info.SeqNum, content.Info.View, primary)
+				return addMsgOk
+			}
+			addBlkOk := pbft.mm.addBlock(content.Info.SeqNum, content.Info.View, content.Block)
+
+			// 添加消息和区块 有一个成功则任务添加成功 从而再次进入状态处理
+			return addMsgOk || addBlkOk
 		}
 
-		// pbft.logger.Debugf("追加日志高度: %d, 日志类型: %s", content.Info.SeqNum, content.Info.GetMsgType())
-		pbft.sm.logMsg[content.Info.SeqNum] = logMsgs
-		return true
+		pbft.logger.Debugf("追加日志高度: %d, 日志类型: %s", content.Info.SeqNum, content.Info.GetMsgType())
+		return addMsgOk
+
 	case *model.PbftViewChange:
-		logMsgs := pbft.sm.logMsg[content.Info.SeqNum]
-		if logMsgs == nil {
-			logMsgs = make(LogGroupByType)
-		}
-		typeView := fmt.Sprintf("%d-%d", content.Info.MsgType, content.Info.View)
-		msgBySinger := logMsgs[typeView]
-		if msgBySinger == nil {
-			msgBySinger = make(LogGroupBySigner)
-		}
-		msgBySinger[string(signer)] = LogMessage{
-			MessageType: content.Info.MsgType,
-			msg:         msg,
-			view:        content.Info.View,
-		}
-		logMsgs[typeView] = msgBySinger
-		pbft.sm.logMsg[content.Info.SeqNum] = logMsgs
+		return pbft.mm.addMsg(content.Info.SeqNum, content.Info.View,
+			content.Info.MsgType, content.Info.SignerId, msg, nil, content)
 	}
 	return false
 }

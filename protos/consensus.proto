@@ -50,6 +50,8 @@ message PbftBlock {
     bytes content = 6;
     // 内容签名
     bytes sign = 7;
+    // 视图编号
+    uint64 view = 10;
 
     repeated SignPairs sign_pairs = 8;
 }
