@@ -31,23 +31,51 @@ import (
 
 type PBFT struct {
 	// 当前所属状态
-	sm               *StateMachine
-	mm               *MsgManager
-	verifiers        map[string]*model.Verifier
-	verifierPeerID   map[string]string // peerID --- string(singer)
-	Msgs             *MsgQueue
-	stateTimeout     *time.Timer // 状态转换超时器
-	switcher         network.SwitcherI
-	logger           *log.Entry
-	ws               *world_state.WroldState
-	stateMigTimer    *time.Timer // 状态迁移轮询定时器
-	txPool           *transaction.TxPool
-	tryProposalTimer *time.Timer // 定时尝试提议区块
-	StopFlag         bool
-	cfg              *config.Configure
-	curBroadcastMsg  *model.PbftMessage
-	broadcastSig     chan *model.PbftMessage
+	sm                *StateMachine
+	mm                *MsgManager
+	verifiers         map[string]*model.Verifier
+	verifierPeerID    map[string]string // peerID --- string(singer)
+	Msgs              *MsgQueue
+	stateTimeout      *time.Timer // 状态转换超时器
+	switcher          network.SwitcherI
+	logger            *log.Entry
+	ws                *world_state.WroldState
+	statepollingTimer *StatePollingTimer // 状态迁移轮询定时器
+	txPool            *transaction.TxPool
+	tryProposalTimer  *time.Timer // 定时尝试提议区块
+	StopFlag          bool
+	cfg               *config.Configure
+	curBroadcastMsg   *StateMsg
+	broadcastSig      chan *StateMsg
 	sync.Mutex
+}
+
+type StatePollingTimer struct {
+	*time.Timer
+}
+
+func NewStatePollingTimer() *StatePollingTimer {
+	t := &StatePollingTimer{
+		time.NewTimer(500 * time.Millisecond),
+	}
+	t.Stop()
+	return t
+}
+
+// 正常的轮询间隔
+const normalDuraton = 1000 * time.Microsecond
+
+// 加快轮询
+const fastDuration = 50 * time.Microsecond
+
+func (st *StatePollingTimer) AdjustmentPolling(duration time.Duration) {
+	if !st.Stop() {
+		select {
+		case <-st.C:
+		default:
+		}
+	}
+	st.Reset(duration)
 }
 
 type MsgQueue struct {
@@ -116,7 +144,7 @@ func New(ws *world_state.WroldState, txPool *transaction.TxPool, switcher networ
 		return nil, err
 	}
 
-	pbft.broadcastSig = make(chan *model.PbftMessage, 100)
+	pbft.broadcastSig = make(chan *StateMsg, 100)
 	pbft.txPool = txPool
 
 	pbft.switcher = switcher
@@ -134,7 +162,8 @@ func (pbft *PBFT) Daemon() {
 
 	pbft.stateTimeout = time.NewTimer(10 * time.Second)
 	pbft.tryProposalTimer = time.NewTimer(5 * time.Second)
-	pbft.stateMigTimer = time.NewTimer(500 * time.Millisecond)
+	pbft.statepollingTimer = NewStatePollingTimer()
+	pbft.statepollingTimer.AdjustmentPolling(normalDuraton)
 
 	for {
 		select {
@@ -145,7 +174,8 @@ func (pbft *PBFT) Daemon() {
 			// 有消息进入
 			pbft.StateMigrate(msg)
 
-		case <-pbft.stateMigTimer.C:
+		case <-pbft.statepollingTimer.C:
+			pbft.statepollingTimer.AdjustmentPolling(normalDuraton)
 			if pbft.StopFlag {
 				continue
 			}
@@ -171,7 +201,8 @@ func (pbft *PBFT) Daemon() {
 				pbft.logger.Errorf("在viewchanging状态 进行消息签名时 发生了错误, err: %v", err)
 				continue
 			}
-			pbft.AddBroadcastTask(signedMsg)
+			pbft.Msgs.InsertMsg(signedMsg)
+			//pbft.AddBroadcastTask(signedMsg)
 
 		case <-pbft.tryProposalTimer.C:
 			// 1. 检查共识引擎是否可以开始 2.是否处于no_started状态 3. 发起提案广播

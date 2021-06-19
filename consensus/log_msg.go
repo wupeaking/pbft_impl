@@ -234,6 +234,13 @@ func (pbft *PBFT) FindStateMsgBySinger(num, view uint64, msgType model.MessageTy
 	// return nil, nil
 }
 
+func (pbft *PBFT) CompareStateMsg(a *StateMsg, b *StateMsg) bool {
+	if a.MsgType == b.MsgType && bytes.Compare(a.Signer, b.Signer) == 0 {
+		return true
+	}
+	return false
+}
+
 type LogGroupByType map[string]LogGroupBySigner
 type LogGroupBySigner map[string]LogMessage
 

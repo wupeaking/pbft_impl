@@ -22,7 +22,7 @@ func (pbft *PBFT) LoadVerfierPeerIDs() error {
 	return nil
 }
 
-func (pbft *PBFT) AddBroadcastTask(msg *model.PbftMessage) {
+func (pbft *PBFT) AddBroadcastTask(msg *StateMsg) {
 	select {
 	case pbft.broadcastSig <- msg:
 		return
@@ -47,14 +47,26 @@ func (pbft *PBFT) BroadcastMsgRoutine() {
 			if pbft.curBroadcastMsg == nil {
 				continue
 			}
-			pbft.broadcastStateMsg(pbft.curBroadcastMsg)
+
+			if pbft.curBroadcastMsg.ViewChangeMsg != nil {
+				pbft.broadcastStateMsg(model.NewPbftMessage(pbft.curBroadcastMsg.ViewChangeMsg))
+			}
 
 		case msg := <-pbft.broadcastSig:
 			//根据实际情况 判断是否需要广播
 			// 1. 如果是第一次广播此消息 则全部广播
-			if !pbft.compareMsg(msg, pbft.curBroadcastMsg) {
-				// pbft.logger.Debugf("此次广播的消息和上次广播的消息不一致  msg: %#v, lastMsg: %#v", msg, pbft.curBroadcastMsg)
-				pbft.broadcastStateMsg(pbft.curBroadcastMsg)
+			if /*!pbft.CompareStateMsg(msg, pbft.curBroadcastMsg)*/ !msg.Broadcast {
+				var pbftMsg *model.PbftMessage
+				switch msg.MsgType {
+				case model.MessageType_ViewChange:
+					pbftMsg = model.NewPbftMessage(msg.ViewChangeMsg)
+				default:
+					pbftMsg = model.NewPbftMessage(msg.GenericMsg)
+				}
+				msg.Lock()
+				msg.Broadcast = true
+				msg.Unlock()
+				pbft.broadcastStateMsg(pbftMsg)
 				pbft.curBroadcastMsg = msg
 				continue
 			}
