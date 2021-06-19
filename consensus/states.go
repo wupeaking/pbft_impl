@@ -84,6 +84,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 	switch curState {
 	case model.States_NotStartd:
 		// 处于此状态 期望接收到 新区块提议
+		defer pbft.statepollingTimer.AdjustmentPolling(normalDuraton)
 		msgBysigners := pbft.FindStateMsg(pbft.ws.BlockNum+1, pbft.ws.View, model.MessageType_NewBlockProposal)
 		if len(msgBysigners) == 0 {
 			pbft.logger.Debugf("当前状态为%s 暂未收到%s类型消息",
@@ -97,19 +98,17 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 				model.States_name[int32(curState)], pbft.ws.BlockNum+1, pbft.ws.View)
 
 			// 检查之前是否已经广播过PrePrepare消息
-			prePrepareMsg := pbft.FindStateMsgBySinger(pbft.ws.BlockNum+1, pbft.ws.View, model.MessageType_PrePrepare, pbft.ws.CurVerfier.PublickKey)
-			if prePrepareMsg != nil {
-				if prePrepareMsg.Broadcast == false {
-					// 广播消息
-					pbft.AddBroadcastTask(prePrepareMsg)
-					// 直接迁移到 prepare状态
-					pbft.ChangeState(model.States_Preparing)
-					// 主动触发状态迁移
-					// pbft.Msgs.InsertMsg(signedMsg)
-				} else {
-					return
-				}
-			}
+			// prePrepareMsg := pbft.FindStateMsgBySinger(pbft.ws.BlockNum+1, pbft.ws.View, model.MessageType_PrePrepare, pbft.ws.CurVerfier.PublickKey)
+			// if prePrepareMsg != nil {
+			// 	if prePrepareMsg.Broadcast == false {
+			// 		// 广播消息
+			// 		pbft.AddBroadcastTask(prePrepareMsg)
+			// 		// 直接迁移到 prepare状态
+			// 		pbft.ChangeState(model.States_Preparing)
+			// 		// 主动触发状态迁移
+			// 		// pbft.Msgs.InsertMsg(signedMsg)
+			// 	}
+			// }
 
 			// 尝试打包一个区块
 			blk, err := pbft.packageBlock()
@@ -136,7 +135,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 			}
 
 			// 广播消息
-			// pbft.AddBroadcastTask(signedMsg)
+			pbft.broadcastStateMsg(signedMsg)
 			// 直接迁移到 prepare状态
 			pbft.ChangeState(model.States_Preparing)
 			// 主动触发状态迁移
@@ -150,6 +149,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		}
 
 	case model.States_PrePreparing:
+		defer pbft.statepollingTimer.AdjustmentPolling(normalDuraton)
 		// 此状态需要接收到 主节点发送的MessageType_PrePrepare
 		// msgBysigners := pbft.FindStateMsg(pbft.ws.BlockNum+1, pbft.ws.View, model.MessageType_PrePrepare)
 		primary := (pbft.ws.BlockNum + 1 + pbft.ws.View) % uint64(len(pbft.ws.Verifiers))
@@ -232,7 +232,6 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 			// 说明之前已经广播过
 			if !prepareMsg.Broadcast {
 				pbft.AddBroadcastTask(prepareMsg)
-				return
 			}
 		}
 
@@ -241,6 +240,8 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		if len(msgBysigners) == 0 {
 			pbft.logger.Debugf("当前状态为%s 暂未收到%s类型消息",
 				model.States_name[int32(curState)], model.MessageType_name[int32(model.MessageType_Prepare)])
+
+			pbft.statepollingTimer.AdjustmentPolling(normalDuraton)
 			return
 		}
 
@@ -254,14 +255,17 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 			// 收到了足够多的prepare 切换到下一个状态
 			// 满足节点数量  进入checking
 			pbft.ChangeState(model.States_Checking)
-			// todo:: 调解轮询时间 加快进入下一个状态处理
+			//  加快进入下一个状态处理
+			pbft.statepollingTimer.AdjustmentPolling(fastDuration)
 		} else {
 			pbft.logger.Debugf("当前状态为%s 暂未收到足够多的%s类型消息",
 				model.States_name[int32(curState)], model.MessageType_name[int32(model.MessageType_Prepare)])
+			pbft.statepollingTimer.AdjustmentPolling(normalDuraton)
 			return
 		}
 
 	case model.States_Checking:
+		defer pbft.statepollingTimer.AdjustmentPolling(normalDuraton)
 		// 在这个状态 等待收到足够签名的区块 如果收到 则直接进入下一个状态 否则 等待
 		if pbft.sm.receivedBlock == nil {
 			blk := pbft.FindBlock(pbft.ws.BlockNum+1, pbft.ws.View)
@@ -302,12 +306,14 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		if len(msgBysigners) == 0 {
 			pbft.logger.Debugf("当前状态为%s 暂未收到%s类型消息",
 				model.States_name[int32(curState)], model.MessageType_name[int32(model.MessageType_Commit)])
+			pbft.statepollingTimer.AdjustmentPolling(normalDuraton)
 			return
 		}
 
 		if len(msgBysigners) >= pbft.minNodeNum() {
 			// 说明已经收到了足够多的commit消息 迁移到finish状态 进行commit区块
 			pbft.ChangeState(model.States_Finished)
+			pbft.statepollingTimer.AdjustmentPolling(fastDuration)
 		}
 		// 广播消息
 		// pbft.AddBroadcastTask(signedMsg)
