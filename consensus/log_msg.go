@@ -115,13 +115,32 @@ func (mm *MsgManager) addBlock(blkNum uint64, view uint64, block *model.PbftBloc
 
 	blk, ok := mm.BlockMsg[blkMsgKey]
 	if !ok {
-		mm.BlockMsg[blkMsgKey] = blk
+		mm.BlockMsg[blkMsgKey] = block
 		mm.addBlockView(blkNum, view)
 		return true
 	}
 
-	if len(blk.SignPairs) < len(block.SignPairs) {
+	// todo:: !!! 这里逻辑有点问题 需要判断是否signerid一样 如果不一样 需要加进来
+	if len(blk.SignPairs) == 0 && len(blk.SignPairs) < len(block.SignPairs) {
 		mm.BlockMsg[blkMsgKey] = block
+		mm.addBlockView(blkNum, view)
+		return true
+	}
+	hasDiffSigner := false
+	if len(blk.SignPairs) != 0 && len(block.SignPairs) != 0 {
+		curSingers := make(map[string]struct{})
+		for i := range blk.SignPairs {
+			curSingers[string(blk.SignPairs[i].SignerId)] = struct{}{}
+		}
+		for i := range block.SignPairs {
+			if _, ok := curSingers[string(block.SignPairs[i].SignerId)]; !ok {
+				blk.SignPairs = append(blk.SignPairs, block.SignPairs[i])
+				hasDiffSigner = true
+			}
+		}
+	}
+	if hasDiffSigner {
+		mm.BlockMsg[blkMsgKey] = blk
 		mm.addBlockView(blkNum, view)
 		return true
 	}

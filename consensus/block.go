@@ -16,6 +16,7 @@ func (pbft *PBFT) packageBlock() (*model.PbftBlock, error) {
 		SignerId:  pbft.ws.CurVerfier.PublickKey,
 		BlockNum:  pbft.ws.BlockNum + 1,
 		TimeStamp: uint64(time.Now().Unix()),
+		View:      pbft.ws.View,
 	}
 	txs := make([]*model.Tx, 0)
 	max := 3000

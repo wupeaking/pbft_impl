@@ -72,10 +72,12 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 	if msg != nil && !pbft.VerfifyMsg(msg) {
 		pbft.logger.Warnf("接收到无效的msg")
 		return
-	} else {
-		ok := pbft.AppendMsg(msg)
-		if !ok {
+	}
+	if msg != nil {
+		// 如果追加失败 表示之前已经追加过
+		if ok := pbft.AppendMsg(msg); !ok {
 			// 说明消息已经追加过 不在触发状态处理
+			pbft.logger.Debugf("此消息已经追加过 不再触发状态处理")
 			return
 		}
 	}
@@ -176,26 +178,30 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		// 对blk签名
 		if blk != nil {
 			signed := false
+			// 检查区块是否已经由本节点签名
 			for i := range blk.SignPairs {
 				if bytes.Compare(blk.SignPairs[i].SignerId, pbft.ws.CurVerfier.PublickKey) == 0 {
 					signed = true
 					break
 				}
-				if !signed && bytes.Compare(blk.SignerId, pbft.ws.CurVerfier.PublickKey) == 0 {
-					signed = true
-				}
 			}
+			// if !signed && bytes.Compare(blk.SignerId, pbft.ws.CurVerfier.PublickKey) == 0 {
+			// 	signed = true
+			// }
 
 			switch {
+			// 虽然本节点已经签名 但是签名数量还不够 再次广播自己签名签名的区块
 			case signed == true && len(blk.SignPairs)+1 < pbft.minNodeNum():
 				broadcastBlk = blk
 			case signed == false:
+				// 本节点没有签名 那么签名此区块
 				b, err := pbft.signBlock(blk)
 				if err != nil {
 					pbft.logger.Warnf("当前节点处于PrePreparing 对区块进行签名是发生错误 err: %v",
 						err)
 					return
 				}
+				pbft.logger.Debugf("本节点还未签名本区块 签名并广播本区块")
 				broadcastBlk = b
 			case signed == true && len(blk.SignPairs)+1 >= pbft.minNodeNum():
 				pbft.sm.receivedBlock = blk
@@ -229,10 +235,29 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		//检查自己是否已经发起prepare消息 如果没有 则发起
 		prepareMsg := pbft.FindStateMsgBySinger(pbft.ws.BlockNum+1, pbft.ws.View, model.MessageType_Prepare, pbft.ws.CurVerfier.PublickKey)
 		if prepareMsg != nil {
-			// 说明之前已经广播过
+			// 如果未广播则广播
 			if !prepareMsg.Broadcast {
 				pbft.AddBroadcastTask(prepareMsg)
 			}
+		} else {
+			// 说明自己还未发起prepare消息
+			newMsg := model.PbftGenericMessage{
+				Info: &model.PbftMessageInfo{MsgType: model.MessageType_Prepare,
+					View: pbft.ws.View, SeqNum: pbft.ws.BlockNum + 1,
+					SignerId: pbft.ws.CurVerfier.PublickKey,
+					Sign:     nil,
+				},
+			}
+
+			// 签名
+			signedMsg, err := pbft.SignMsg(model.NewPbftMessage(&newMsg))
+			if err != nil {
+				pbft.logger.Warnf("当前状态为 %s, 发起prepare消息时 在签名过程中发生错误 err: %v ",
+					model.States_name[int32(curState)], err)
+				return
+			}
+			pbft.Msgs.InsertMsg(signedMsg)
+			return
 		}
 
 		// 此状态需要接收足够多的prepare消息 方能迁移成功 在这个状态 等待接收足够多的prepare消息
@@ -268,6 +293,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		defer pbft.statepollingTimer.AdjustmentPolling(normalDuraton)
 		// 在这个状态 等待收到足够签名的区块 如果收到 则直接进入下一个状态 否则 等待
 		if pbft.sm.receivedBlock == nil {
+			pbft.logger.Warnf("当前状态在States_Checking, 但是依旧没有收到签名足够的区块...")
 			blk := pbft.FindBlock(pbft.ws.BlockNum+1, pbft.ws.View)
 			if blk != nil && len(blk.SignPairs)+1 >= pbft.minNodeNum() {
 				pbft.sm.receivedBlock = blk

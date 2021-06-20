@@ -58,15 +58,15 @@ func NewStatePollingTimer() *StatePollingTimer {
 	t := &StatePollingTimer{
 		time.NewTimer(500 * time.Millisecond),
 	}
-	t.Stop()
+	//t.Stop()
 	return t
 }
 
 // 正常的轮询间隔
-const normalDuraton = 1000 * time.Microsecond
+const normalDuraton = 1000 * time.Millisecond
 
 // 加快轮询
-const fastDuration = 50 * time.Microsecond
+const fastDuration = 50 * time.Millisecond
 
 func (st *StatePollingTimer) AdjustmentPolling(duration time.Duration) {
 	if !st.Stop() {
@@ -149,6 +149,7 @@ func New(ws *world_state.WroldState, txPool *transaction.TxPool, switcher networ
 
 	pbft.switcher = switcher
 	pbft.StopFlag = true
+	pbft.mm = NewMsgManager()
 
 	return pbft, nil
 }
@@ -180,6 +181,7 @@ func (pbft *PBFT) Daemon() {
 				continue
 			}
 			// 定时轮询状态迁移
+			// pbft.logger.Debugf("进入定时轮询状态迁移")
 			pbft.StateMigrate(nil)
 
 		case <-pbft.stateTimeout.C:
