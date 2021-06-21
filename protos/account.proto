@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "model";
+option go_package = "./;model";
+
+import "transaction.proto";
+
+message Account {
+    address id = 1;
+    bytes code = 2;
+    amount balance = 3;
+    int32 account_type = 4;
+    bytes publick_key = 5;
+}
+
+
+// 一个账户 可以是下面几个类型的合集
+enum AccountType {
+    Default = 0; // default
+    Normal = 1; // 普通账户
+    Code = 2;  // 合约账户
+    Admin = 4; // 管理员账户
+    Verifier = 8; // 验证者账户
+}
