@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/golang/protobuf/proto"
+	lru "github.com/hashicorp/golang-lru"
 	log "github.com/sirupsen/logrus"
 	"github.com/wupeaking/pbft_impl/common/config"
 	"github.com/wupeaking/pbft_impl/model"
@@ -26,9 +28,16 @@ func init() {
 	logger = logg.WithField("module", "blockchain")
 }
 
+type txReadMark struct {
+	marked bool
+}
 type TxPool struct {
 	switcher network.SwitcherI
 	db       cache.DBCache
+	pool     *lru.Cache
+	cap      int
+	txIds    map[string]txReadMark
+	sync.RWMutex
 }
 
 func NewTxPool(switcher network.SwitcherI, cfg *config.Configure) *TxPool {
@@ -44,8 +53,13 @@ func NewTxPool(switcher network.SwitcherI, cfg *config.Configure) *TxPool {
 	default:
 		logger.Logger.SetLevel(log.InfoLevel)
 	}
+	pool, _ := lru.New(cfg.MaxTxNum)
+
 	return &TxPool{
 		switcher: switcher,
+		pool:     pool,
+		cap:      cfg.MaxTxNum,
+		txIds:    make(map[string]txReadMark),
 	}
 }
 
@@ -101,16 +115,41 @@ func (txpool *TxPool) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer
 
 }
 
-func (txpool *TxPool) GetTx() *model.Tx {
-	return nil
+func (txpool *TxPool) GetTx(nums int) []*model.Tx {
+	ret := make([]*model.Tx, 0)
+	for key := range txpool.txIds {
+		if txpool.txIds[key].marked {
+			continue
+		}
+		tx, ok := txpool.pool.Get(key)
+		if !ok {
+			continue
+		}
+
+		ret = append(ret, tx.(*model.Tx))
+		if len(ret) > nums {
+			break
+		}
+	}
+	return ret
 }
 
-func (txpool *TxPool) AddTx(*model.Tx) bool {
-	return true
+func (txpool *TxPool) AddTx(tx *model.Tx) bool {
+	// todo:: 可能会需要根据cap删除一些
+	if txpool.pool.Len() > txpool.cap {
+		return false
+	}
+	key := fmt.Sprintf("%0x", tx.Sign)
+	txpool.txIds[key] = txReadMark{false}
+	return txpool.pool.Add(key, tx)
 }
 
-func (txpool *TxPool) RemoveTx(*model.Tx) {
-
+func (txpool *TxPool) RemoveTx(tx *model.Tx) {
+	key := fmt.Sprintf("%0x", tx.Sign)
+	txpool.Lock()
+	delete(txpool.txIds, key)
+	txpool.Unlock()
+	txpool.pool.Remove(fmt.Sprintf("%0x", tx.Sign))
 }
 
 func (txpool *TxPool) VerifyTx(tx *model.Tx) error {

@@ -24,16 +24,15 @@ func (pbft *PBFT) packageBlock() (*model.PbftBlock, error) {
 	}
 	txs := make([]*model.Tx, 0)
 	max := 3000
-	i := 0
 	for {
-		t := pbft.txPool.GetTx()
-		if t == nil {
+		ts := pbft.txPool.GetTx(max)
+		if len(ts) == 0 {
 			break
 		}
-		if i > max {
+		if len(txs)+len(ts) > max {
 			break
 		}
-		txs = append(txs, t)
+		txs = append(txs, ts...)
 	}
 	blk.Tansactions = &model.Txs{Tansactions: txs}
 	// todo:: 需要调用执行txs模块 生成blk.TransactionReceipts

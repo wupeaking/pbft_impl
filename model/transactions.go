@@ -39,3 +39,23 @@ func (tx *Tx) VerifySignedTx() (bool, error) {
 	pub, err := cryptogo.LoadPublicKeyFromBytes(tx.PublickKey)
 	return cryptogo.VerifySign(pub, fmt.Sprintf("%0x", tx.Sign), fmt.Sprintf("0x%x", hash)), nil
 }
+
+func (txs *Txs) MerkleRoot() []byte {
+}
+
+func merkel(arrs [][]byte) []byte {
+	if len(arrs) == 1 {
+		sh := sha256.New()
+		sh.Write(arrs[0])
+		return sh.Sum(nil)
+	}
+	if len(arrs) == 2 {
+		sh := sha256.New()
+		sh.Write(arrs[0])
+		sh.Write(arrs[1])
+		return sh.Sum(nil)
+	}
+	for {
+
+	}
+}
