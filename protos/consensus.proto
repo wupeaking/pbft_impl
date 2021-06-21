@@ -2,8 +2,9 @@ syntax = "proto3";
 
 option java_multiple_files = true;
 option java_package = "model";
-option go_package = "model";
+option go_package = "./;model";
 
+import "transaction.proto";
 
 enum MessageType {
     Default = 0;
@@ -46,8 +47,14 @@ message PbftBlock {
     uint64 time_stamp = 4;
 
     uint64 block_num = 5;
-    // 区块完整内容
-    bytes content = 6;
+    // 交易列表
+    // bytes content = 6;
+    txs tansactions = 6;
+    txReceipts transaction_receipts = 9;
+
+    bytes tx_root = 11;
+    bytes tx_receipts_root = 12;
+
     // 内容签名
     bytes sign = 7;
     // 视图编号

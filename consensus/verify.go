@@ -121,13 +121,15 @@ func (pbft *PBFT) verfifyBlock(blk *model.PbftBlock) bool {
 	}
 
 	b := model.PbftBlock{
-		PrevBlock: blk.PrevBlock,
-		BlockNum:  blk.BlockNum,
-		Content:   blk.Content,
-		TimeStamp: blk.TimeStamp,
-		BlockId:   "",
-		View:      blk.View,
+		PrevBlock:      blk.PrevBlock,
+		BlockNum:       blk.BlockNum,
+		TxRoot:         blk.TxRoot,
+		TxReceiptsRoot: blk.TxReceiptsRoot,
+		TimeStamp:      blk.TimeStamp,
+		BlockId:        "",
+		View:           blk.View,
 	}
+	// todo: 需要验证 txroot和txrecptroot
 
 	content, _ := proto.Marshal(&b)
 	sh := sha256.New()
@@ -151,13 +153,15 @@ func (pbft *PBFT) VerfifyMostBlock(blk *model.PbftBlock) bool {
 	}
 
 	b := model.PbftBlock{
-		PrevBlock: blk.PrevBlock,
-		BlockNum:  blk.BlockNum,
-		Content:   blk.Content,
-		TimeStamp: blk.TimeStamp,
-		BlockId:   "",
-		View:      blk.View,
+		PrevBlock:      blk.PrevBlock,
+		BlockNum:       blk.BlockNum,
+		TxRoot:         blk.TxRoot,
+		TxReceiptsRoot: blk.TxReceiptsRoot,
+		TimeStamp:      blk.TimeStamp,
+		BlockId:        "",
+		View:           blk.View,
 	}
+	// todo: 需要验证txroot和txrecptsroot
 
 	content, _ := proto.Marshal(&b)
 	sh := sha256.New()
@@ -326,12 +330,13 @@ func (pbft *PBFT) signBlock(blk *model.PbftBlock) (*model.PbftBlock, error) {
 		return nil, err
 	}
 	b := model.PbftBlock{
-		PrevBlock: blk.PrevBlock,
-		BlockNum:  blk.BlockNum,
-		Content:   blk.Content,
-		TimeStamp: blk.TimeStamp,
-		BlockId:   "",
-		View:      blk.View,
+		PrevBlock:      blk.PrevBlock,
+		BlockNum:       blk.BlockNum,
+		TxRoot:         blk.TxRoot,
+		TxReceiptsRoot: blk.TxReceiptsRoot,
+		TimeStamp:      blk.TimeStamp,
+		BlockId:        "",
+		View:           blk.View,
 	}
 	content, _ := proto.Marshal(&b)
 	sh := sha256.New()

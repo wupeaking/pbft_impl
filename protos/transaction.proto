@@ -2,7 +2,7 @@ syntax = "proto3";
 
 option java_multiple_files = true;
 option java_package = "model";
-option go_package = "model";
+option go_package = "./;model";
 
 message address {
     string address = 1;
@@ -23,4 +23,15 @@ message tx {
 
 message txs {
     repeated tx tansactions = 1;
+}
+
+message txReceipt {
+    int32 status = 1;
+    string sequeue = 4;
+    bytes tx_id = 6;
+    bytes sign = 7;
+}
+
+message txReceipts {
+    repeated txReceipt tansaction_receipts = 1;
 }

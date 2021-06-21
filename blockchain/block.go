@@ -112,7 +112,8 @@ func (bc *BlockChain) msgOnRecv(modelID string, msgBytes []byte, p *network.Peer
 
 		if blockReq.RequestType == model.BlockRequestType_only_header {
 			// 只发送区块头
-			blk.Content = nil
+			blk.Tansactions = nil
+			blk.TransactionReceipts = nil
 		}
 		resp := model.BlockResponse{RequestType: blockReq.RequestType, Block: blk}
 		body, _ := proto.Marshal(&resp)

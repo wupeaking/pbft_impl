@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -9,6 +8,7 @@ import (
 )
 
 func (pbft *PBFT) packageBlock() (*model.PbftBlock, error) {
+	// todo:: 后期 打包区块 需要做更多的功能 他需要执行区块的交易 生成tx_root tx_recpt_root
 	// 尝试打包一个新区块
 	// 当前
 	blk := &model.PbftBlock{
@@ -17,6 +17,10 @@ func (pbft *PBFT) packageBlock() (*model.PbftBlock, error) {
 		BlockNum:  pbft.ws.BlockNum + 1,
 		TimeStamp: uint64(time.Now().Unix()),
 		View:      pbft.ws.View,
+		// todo:: 需要根据txs生成tx_root
+		TxRoot: nil,
+		// todo:: 需要根据tx_recpts生成
+		TxReceiptsRoot: nil,
 	}
 	txs := make([]*model.Tx, 0)
 	max := 3000
@@ -31,11 +35,9 @@ func (pbft *PBFT) packageBlock() (*model.PbftBlock, error) {
 		}
 		txs = append(txs, t)
 	}
-	body, err := json.Marshal(txs)
-	if err != nil {
-		return nil, err
-	}
-	blk.Content = body
+	blk.Tansactions = &model.Txs{Tansactions: txs}
+	// todo:: 需要调用执行txs模块 生成blk.TransactionReceipts
+	blk.TransactionReceipts = nil
 	return pbft.signBlock(blk)
 }
 
@@ -47,6 +49,8 @@ func (pbft *PBFT) CommitBlock(block *model.PbftBlock) error {
 	pbft.ws.IncreaseBlockNum()
 	pbft.ws.SetValue(block.BlockNum, pbft.ws.BlockID, string(block.BlockId), nil)
 	pbft.ws.InsertBlock(block)
+	// 更新视图
+	pbft.ws.View = block.View
 	pbft.ws.UpdateLastWorldState()
 	pbft.logger.Infof("提交一个新区块, 区块高度为: %d", block.GetBlockNum())
 	pbft.sm.receivedBlock = nil
