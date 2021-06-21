@@ -15,6 +15,7 @@ import (
 	"github.com/wupeaking/pbft_impl/network"
 	"github.com/wupeaking/pbft_impl/network/http_network"
 	"github.com/wupeaking/pbft_impl/network/libp2p"
+	"github.com/wupeaking/pbft_impl/storage/cache"
 	"github.com/wupeaking/pbft_impl/storage/world_state"
 	"github.com/wupeaking/pbft_impl/transaction"
 )
@@ -29,8 +30,10 @@ type PBFTNode struct {
 }
 
 func New() *PBFTNode {
+	// 创建缓存数据库
+	db := cache.New("./.counch")
 	// 检查本地是否已经保存数据
-	ws := world_state.New("./.counch")
+	ws := world_state.New(db)
 	// 读取创世区块
 	genesis, err := ws.GetGenesis()
 	if err != nil {

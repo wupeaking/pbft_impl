@@ -8,6 +8,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/mux v1.7.4
+	github.com/hashicorp/golang-lru v0.5.4
 	github.com/libp2p/go-libp2p v0.11.0
 	github.com/libp2p/go-libp2p-core v0.6.1
 	github.com/libp2p/go-libp2p-discovery v0.5.0
@@ -20,6 +21,6 @@ require (
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/net v0.0.0-20191002035440-2ec189313ef0 // indirect
 	google.golang.org/grpc v1.24.0 // indirect
-	google.golang.org/protobuf v1.26.0 // indirect
+	google.golang.org/protobuf v1.26.0
 	moul.io/http2curl v1.0.0 // indirect
 )

@@ -61,6 +61,19 @@ func LoadPublicKey(public string) (*ecdsa.PublicKey, error) {
 	return &publicKey, nil
 }
 
+func LoadPublicKeyFromBytes(public []byte) (*ecdsa.PublicKey, error) {
+	if len(public) != 64 {
+		return nil, fmt.Errorf("公钥格式错误")
+	}
+	x := public[0:32]
+	y := public[32:]
+
+	publicKey := ecdsa.PublicKey{Curve: elliptic.P256()}
+	publicKey.X = new(big.Int).SetBytes(x)
+	publicKey.Y = new(big.Int).SetBytes(y)
+	return &publicKey, nil
+}
+
 func random(n int) ([]byte, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)

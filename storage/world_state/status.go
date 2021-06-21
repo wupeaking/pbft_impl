@@ -21,8 +21,8 @@ type WroldState struct {
 	sync.Mutex `json:"-"`
 }
 
-func New(path string) *WroldState {
-	return &WroldState{db: cache.New(path)}
+func New(dbCache *cache.DBCache) *WroldState {
+	return &WroldState{db: dbCache}
 }
 
 func (ws *WroldState) IncreaseBlockNum() {

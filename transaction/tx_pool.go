@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
@@ -9,6 +10,7 @@ import (
 	"github.com/wupeaking/pbft_impl/common/config"
 	"github.com/wupeaking/pbft_impl/model"
 	"github.com/wupeaking/pbft_impl/network"
+	"github.com/wupeaking/pbft_impl/storage/cache"
 )
 
 var logger *log.Entry
@@ -26,6 +28,7 @@ func init() {
 
 type TxPool struct {
 	switcher network.SwitcherI
+	db       cache.DBCache
 }
 
 func NewTxPool(switcher network.SwitcherI, cfg *config.Configure) *TxPool {
@@ -110,6 +113,34 @@ func (txpool *TxPool) RemoveTx(*model.Tx) {
 
 }
 
-func (txpool *TxPool) VerifyTx(*model.Tx) error {
+func (txpool *TxPool) VerifyTx(tx *model.Tx) error {
+	// 数据格式校验
+	if tx.Sender == nil || tx.Sender.Address == "" ||
+		tx.Sequeue == "" || len(tx.Sign) == 0 || len(tx.PublickKey) == 0 {
+		return fmt.Errorf("交易数据格式错误")
+	}
+	// 首先交易 签名是否正确
+	accountAddr := model.PublicKeyToAddress(tx.PublickKey)
+
+	if tx.Sender.Address != accountAddr.Address {
+		return fmt.Errorf("账户ID和sender不匹配")
+	}
+	// 查询账户信息
+	account, err := txpool.db.GetAccountByID(tx.Sender.Address)
+	if err != nil {
+		return err
+	}
+	if model.Compare(account.Balance.Amount, tx.Amount.Amount) < 0 {
+		return fmt.Errorf("余额不足")
+	}
+
+	// 签名
+	ok, err := tx.VerifySignedTx()
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("验签不通过")
+	}
 	return nil
 }

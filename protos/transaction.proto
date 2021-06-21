@@ -13,12 +13,13 @@ message amount {
 }
 
 message tx {
-    address Sender = 1;
-    address Recipient = 2;
+    address sender = 1;
+    address recipient = 2;
     amount amount = 3;
     string sequeue = 4;
     bytes input = 5;
     bytes sign = 6;
+    bytes publick_key = 7;
 }
 
 message txs {
