@@ -11,6 +11,7 @@ import (
 	"github.com/wupeaking/pbft_impl/common/config"
 	"github.com/wupeaking/pbft_impl/consensus"
 	cryptogo "github.com/wupeaking/pbft_impl/crypto"
+	"github.com/wupeaking/pbft_impl/cvm"
 	"github.com/wupeaking/pbft_impl/model"
 	"github.com/wupeaking/pbft_impl/network"
 	"github.com/wupeaking/pbft_impl/network/http_network"
@@ -27,6 +28,7 @@ type PBFTNode struct {
 	ws              *world_state.WroldState
 	chain           *blockchain.BlockChain
 	tx              *transaction.TxPool
+	vm              *cvm.VirtualMachine
 }
 
 func New() *PBFTNode {
@@ -55,6 +57,7 @@ func New() *PBFTNode {
 		}
 	}
 
+	vm := cvm.New(db, cfg)
 	txPool := transaction.NewTxPool(switcher, cfg)
 
 	var consen *consensus.PBFT
@@ -88,7 +91,7 @@ func New() *PBFTNode {
 		ws.SetValue(0, "", "genesis", zeroBlock.Verifiers)
 		ws.UpdateLastWorldState()
 
-		pbft, err := consensus.New(ws, txPool, switcher, cfg)
+		pbft, err := consensus.New(ws, txPool, switcher, vm, cfg)
 		if err != nil {
 			logger.Fatalf("读取配置文件发生错误 err: %v", err)
 		}
@@ -114,7 +117,7 @@ func New() *PBFTNode {
 			logger.Infof("当前节点不是验证者, 作为普通节点启动")
 		}
 
-		pbft, err := consensus.New(ws, txPool, switcher, cfg)
+		pbft, err := consensus.New(ws, txPool, switcher, vm, cfg)
 		if err != nil {
 			logger.Fatalf("读取配置文件发生错误 err: %v", err)
 		}
@@ -129,6 +132,7 @@ func New() *PBFTNode {
 		ws:              ws,
 		chain:           chain,
 		tx:              txPool,
+		vm:              vm,
 	}
 }
 

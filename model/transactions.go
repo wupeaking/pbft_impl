@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/wupeaking/pbft_impl/common"
 	cryptogo "github.com/wupeaking/pbft_impl/crypto"
 )
 
@@ -41,21 +42,37 @@ func (tx *Tx) VerifySignedTx() (bool, error) {
 }
 
 func (txs *Txs) MerkleRoot() []byte {
+	txSigns := make([][]byte, len(txs.Tansactions))
+	for i := range txs.Tansactions {
+		txSigns = append(txSigns, txs.Tansactions[i].Sign)
+	}
+	return common.Merkel(txSigns)
 }
 
-func merkel(arrs [][]byte) []byte {
-	if len(arrs) == 1 {
-		sh := sha256.New()
-		sh.Write(arrs[0])
-		return sh.Sum(nil)
+func (txRs *TxReceipts) MerkleRoot() []byte {
+	txrSigns := make([][]byte, len(txRs.TansactionReceipts))
+	for i := range txRs.TansactionReceipts {
+		txrSigns = append(txrSigns, txRs.TansactionReceipts[i].Sign)
 	}
-	if len(arrs) == 2 {
-		sh := sha256.New()
-		sh.Write(arrs[0])
-		sh.Write(arrs[1])
-		return sh.Sum(nil)
-	}
-	for {
+	return common.Merkel(txrSigns)
+}
 
-	}
+func (acc *Account) AddBalance(am *Amount) {
+	acc.Balance.AddAmount(am)
+}
+
+func (acc *Account) SubBalance(am *Amount) {
+	acc.Balance.SubAmount(am)
+}
+
+func (am *Amount) AddAmount(amb *Amount) {
+	biga, _ := big.NewInt(0).SetString(am.Amount, 0)
+	bigb, _ := big.NewInt(0).SetString(amb.Amount, 0)
+	am.Amount = big.NewInt(0).Add(biga, bigb).String()
+}
+
+func (am *Amount) SubAmount(amb *Amount) {
+	biga, _ := big.NewInt(0).SetString(am.Amount, 0)
+	bigb, _ := big.NewInt(0).SetString(amb.Amount, 0)
+	am.Amount = big.NewInt(0).Sub(biga, bigb).String()
 }

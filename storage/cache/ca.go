@@ -254,7 +254,7 @@ func (dbc *DBCache) GetTxByID(id string) (*model.Tx, error) {
 		return nil, err
 	}
 	if txValue == "" {
-		return nil, fmt.Errorf("底层Tx数据有问题")
+		return nil, nil
 	}
 
 	var tx model.Tx
@@ -273,7 +273,7 @@ func (dbc *DBCache) GetAccountByID(id string) (*model.Account, error) {
 		return nil, err
 	}
 	if accValue == "" {
-		return nil, fmt.Errorf("底层账户数据有问题")
+		return nil, nil
 	}
 
 	var acc model.Account
@@ -292,7 +292,7 @@ func (dbc *DBCache) GetTxReceiptByID(id string) (*model.TxReceipt, error) {
 		return nil, err
 	}
 	if txRValue == "" {
-		return nil, fmt.Errorf("底层交易收据数据有问题")
+		return nil, nil
 	}
 
 	var txr model.TxReceipt

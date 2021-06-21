@@ -10,6 +10,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	log "github.com/sirupsen/logrus"
 	"github.com/wupeaking/pbft_impl/common/config"
+	"github.com/wupeaking/pbft_impl/cvm"
 	"github.com/wupeaking/pbft_impl/model"
 	"github.com/wupeaking/pbft_impl/network"
 	"github.com/wupeaking/pbft_impl/storage/world_state"
@@ -42,6 +43,7 @@ type PBFT struct {
 	ws                *world_state.WroldState
 	statepollingTimer *StatePollingTimer // 状态迁移轮询定时器
 	txPool            *transaction.TxPool
+	vm                *cvm.VirtualMachine
 	tryProposalTimer  *time.Timer // 定时尝试提议区块
 	StopFlag          bool
 	cfg               *config.Configure
@@ -106,7 +108,7 @@ func (mq *MsgQueue) WaitMsg() <-chan *model.PbftMessage {
 	return mq.comingMsg
 }
 
-func New(ws *world_state.WroldState, txPool *transaction.TxPool, switcher network.SwitcherI, cfg *config.Configure) (*PBFT, error) {
+func New(ws *world_state.WroldState, txPool *transaction.TxPool, switcher network.SwitcherI, vm *cvm.VirtualMachine, cfg *config.Configure) (*PBFT, error) {
 	pbft := &PBFT{}
 	pbft.cfg = cfg
 	pbft.Msgs = NewMsgQueue()
@@ -150,6 +152,7 @@ func New(ws *world_state.WroldState, txPool *transaction.TxPool, switcher networ
 	pbft.switcher = switcher
 	pbft.StopFlag = true
 	pbft.mm = NewMsgManager()
+	pbft.vm = vm
 
 	return pbft, nil
 }

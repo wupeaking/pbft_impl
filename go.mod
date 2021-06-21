@@ -15,6 +15,7 @@ require (
 	github.com/libp2p/go-libp2p-kad-dht v0.10.0
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/parnurzeal/gorequest v0.2.16
+	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.6.0
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/syndtr/goleveldb v1.0.0
