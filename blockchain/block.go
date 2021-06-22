@@ -60,10 +60,14 @@ func (bc *BlockChain) Start() error {
 			if bc.ws.BlockNum+1 < block.BlockNum {
 				continue
 			}
-			if bc.consensusEngine.ApplyBlock(block) != nil {
+			// if bc.consensusEngine.ApplyBlock(block) != nil {
+			// 	continue
+			// }
+			if err := bc.consensusEngine.CommitBlock(block); err != nil {
+				logger.Errorf("接收到一个新的区块, 区块高度为: %d, 提交区块失败 err: %s",
+					block.GetBlockNum(), err.Error())
 				continue
 			}
-			bc.consensusEngine.CommitBlock(block)
 			bc.pool.RemoveBlock(block)
 		case <-bc.pool.startEngine:
 			// logger.Debugf("区块高度追上最高节点, 启动共识")

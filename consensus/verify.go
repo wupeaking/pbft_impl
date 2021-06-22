@@ -120,6 +120,12 @@ func (pbft *PBFT) verfifyBlock(blk *model.PbftBlock) bool {
 		return false
 	}
 
+	// 验证交易执行是否正确
+	if err := pbft.TryApplyBlock(blk); err != nil {
+		pbft.logger.Warnf("区块交易执行失败 err: %s", err.Error())
+		return false
+	}
+
 	b := model.PbftBlock{
 		PrevBlock:      blk.PrevBlock,
 		BlockNum:       blk.BlockNum,
@@ -129,7 +135,6 @@ func (pbft *PBFT) verfifyBlock(blk *model.PbftBlock) bool {
 		BlockId:        "",
 		View:           blk.View,
 	}
-	// todo: 需要验证 txroot和txrecptroot
 
 	content, _ := proto.Marshal(&b)
 	sh := sha256.New()
@@ -151,6 +156,11 @@ func (pbft *PBFT) VerfifyMostBlock(blk *model.PbftBlock) bool {
 	if !pbft.IsVaildVerifier(blk.SignerId) {
 		return false
 	}
+	// 验证交易执行是否正确
+	if err := pbft.TryApplyBlock(blk); err != nil {
+		pbft.logger.Warnf("区块交易执行失败 err: %s", err.Error())
+		return false
+	}
 
 	b := model.PbftBlock{
 		PrevBlock:      blk.PrevBlock,
@@ -161,7 +171,6 @@ func (pbft *PBFT) VerfifyMostBlock(blk *model.PbftBlock) bool {
 		BlockId:        "",
 		View:           blk.View,
 	}
-	// todo: 需要验证txroot和txrecptsroot
 
 	content, _ := proto.Marshal(&b)
 	sh := sha256.New()

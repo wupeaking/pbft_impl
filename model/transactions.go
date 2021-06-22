@@ -43,6 +43,17 @@ func (tx *Tx) VerifySignedTx() (bool, error) {
 	return cryptogo.VerifySign(pub, fmt.Sprintf("%0x", tx.Sign), fmt.Sprintf("0x%x", hash)), nil
 }
 
+func (tx *Tx) IsVaildTx() bool {
+	if tx.Sender == nil || tx.Sender.Address == "" ||
+		tx.Sequeue == "" || len(tx.Sign) == 0 || len(tx.PublickKey) == 0 ||
+		tx.Recipient == nil || tx.Recipient.Address == "" {
+		// todo:: 后期 可以容许recipent为空
+		return false
+	}
+	ok, _ := tx.VerifySignedTx()
+	return ok
+}
+
 func (txs *Txs) MerkleRoot() []byte {
 	txSigns := make([][]byte, 0, len(txs.Tansactions))
 	for i := range txs.Tansactions {
@@ -98,4 +109,28 @@ func (txr *TxReceipt) SignedTxReceipt(priv *ecdsa.PrivateKey) error {
 	}
 	txr.Sign, err = cryptogo.Hex2Bytes(sign)
 	return err
+}
+
+func (txr *TxReceipt) VerifySignedTxReciept(publicKey []byte) (bool, error) {
+	t := &TxReceipt{
+		Status: txr.Status,
+		TxId:   txr.TxId,
+	}
+	b, err := proto.Marshal(t)
+	if err != nil {
+		return false, err
+	}
+	sh := sha256.New()
+	sh.Write(b)
+	hash := sh.Sum(nil)
+	pub, err := cryptogo.LoadPublicKeyFromBytes(publicKey)
+	return cryptogo.VerifySign(pub, fmt.Sprintf("%0x", txr.Sign), fmt.Sprintf("0x%x", hash)), nil
+}
+
+func (txr *TxReceipt) IsVaildTxR(publicKey []byte) bool {
+	if len(txr.Sign) == 0 || len(txr.TxId) == 0 {
+		return false
+	}
+	ok, _ := txr.VerifySignedTxReciept(publicKey)
+	return ok
 }

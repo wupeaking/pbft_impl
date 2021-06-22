@@ -349,6 +349,7 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		// 停止超时定时器
 		// 重放区块
 		// 切换到not start
+		// todo:: 需要判断提交是否成功 如果不成功 则转换到viewchang
 		pbft.CommitBlock(pbft.sm.receivedBlock)
 		pbft.ChangeState(model.States_NotStartd)
 
