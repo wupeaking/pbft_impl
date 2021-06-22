@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	lru "github.com/hashicorp/golang-lru"
@@ -154,9 +155,15 @@ func (txpool *TxPool) RemoveTx(tx *model.Tx) {
 
 func (txpool *TxPool) VerifyTx(tx *model.Tx) error {
 	// 数据格式校验
+	// 超过48小时的交易都忽略
+	// 或者比当前时间快5分钟
+	n := time.Now().Unix()
 	if tx.Sender == nil || tx.Sender.Address == "" ||
 		tx.Sequeue == "" || len(tx.Sign) == 0 || len(tx.PublickKey) == 0 {
 		return fmt.Errorf("交易数据格式错误")
+	}
+	if n-int64(tx.TimeStamp) > 48*3600 || int64(tx.TimeStamp)-n > 5*60 {
+		return fmt.Errorf("交易时间戳错误")
 	}
 	// 首先交易 签名是否正确
 	accountAddr := model.PublicKeyToAddress(tx.PublickKey)

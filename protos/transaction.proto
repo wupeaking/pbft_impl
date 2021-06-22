@@ -20,6 +20,7 @@ message tx {
     bytes input = 5;
     bytes sign = 6;
     bytes publick_key = 7;
+    uint64 time_stamp = 8;
 }
 
 message txs {
@@ -28,7 +29,6 @@ message txs {
 
 message txReceipt {
     int32 status = 1;
-    string sequeue = 4;
     bytes tx_id = 6;
     bytes sign = 7;
 }

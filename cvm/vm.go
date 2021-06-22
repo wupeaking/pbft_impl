@@ -2,9 +2,7 @@ package cvm
 
 import (
 	"fmt"
-	"strings"
 
-	uuid "github.com/satori/go.uuid"
 	"github.com/wupeaking/pbft_impl/common/config"
 	"github.com/wupeaking/pbft_impl/model"
 	"github.com/wupeaking/pbft_impl/storage/cache"
@@ -24,10 +22,8 @@ func New(db *cache.DBCache, cfg *config.Configure) *VirtualMachine {
 
 // 模拟交易
 func (vm *VirtualMachine) Eval(tx *model.Tx) *model.TxReceipt {
-	uid := uuid.NewV4()
 	txr := &model.TxReceipt{}
 	txr.Status = -1
-	txr.Sequeue = strings.Replace(uid.String(), "-", "", -1)
 	txr.TxId = tx.Sign
 	if tx.Sender == nil || tx.Sender.Address == "" ||
 		tx.Sequeue == "" || len(tx.Sign) == 0 || len(tx.PublickKey) == 0 {
@@ -61,17 +57,16 @@ func (vm *VirtualMachine) Eval(tx *model.Tx) *model.TxReceipt {
 	}
 
 	txr.Status = 0
-	txr.Sequeue = tx.Sequeue
 	txr.TxId = tx.Sign
 	return txr
 }
 
 // 执行交易
 func (vm *VirtualMachine) Exec(tx *model.Tx) (*model.TxReceipt, error) {
-	uid := uuid.NewV4()
+	// uid := uuid.NewV4()
 	txr := &model.TxReceipt{}
 	txr.Status = -1
-	txr.Sequeue = strings.Replace(uid.String(), "-", "", -1)
+	// txr.Sequeue = strings.Replace(uid.String(), "-", "", -1)
 	txr.TxId = tx.Sign
 	if tx.Sender == nil || tx.Sender.Address == "" ||
 		tx.Sequeue == "" || len(tx.Sign) == 0 || len(tx.PublickKey) == 0 {

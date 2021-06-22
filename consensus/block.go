@@ -4,10 +4,15 @@ import (
 	"fmt"
 	"time"
 
+	cryptogo "github.com/wupeaking/pbft_impl/crypto"
 	"github.com/wupeaking/pbft_impl/model"
 )
 
 func (pbft *PBFT) packageBlock() (*model.PbftBlock, error) {
+	privKey, err := cryptogo.LoadPrivateKey(fmt.Sprintf("0x%x", pbft.ws.CurVerfier.PrivateKey))
+	if err != nil {
+		return nil, err
+	}
 	// todo:: 后期 打包区块 需要做更多的功能 他需要执行区块的交易 生成tx_root tx_recpt_root
 	// 尝试打包一个新区块
 	// 当前
@@ -36,7 +41,18 @@ func (pbft *PBFT) packageBlock() (*model.PbftBlock, error) {
 	}
 	blk.Tansactions = &model.Txs{Tansactions: txs}
 	// todo:: 需要调用执行txs模块 生成blk.TransactionReceipts
-	blk.TransactionReceipts = nil
+	blk.TransactionReceipts = &model.TxReceipts{TansactionReceipts: make([]*model.TxReceipt, 0)}
+	for i := range blk.Tansactions.Tansactions {
+		txr := pbft.vm.Eval(blk.Tansactions.Tansactions[i])
+		err := txr.SignedTxReceipt(privKey)
+		if err != nil {
+			return nil, err
+		}
+		blk.TransactionReceipts.TansactionReceipts = append(blk.TransactionReceipts.TansactionReceipts, txr)
+	}
+	blk.TxRoot = blk.Tansactions.MerkleRoot()
+	blk.TxReceiptsRoot = blk.TransactionReceipts.MerkleRoot()
+
 	return pbft.signBlock(blk)
 }
 

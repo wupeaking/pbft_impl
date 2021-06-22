@@ -1,6 +1,7 @@
 package model
 
 import (
+	"crypto/ecdsa"
 	"crypto/sha256"
 	"fmt"
 	"math/big"
@@ -29,6 +30,7 @@ func (tx *Tx) VerifySignedTx() (bool, error) {
 		Amount:    tx.Amount,
 		Sequeue:   tx.Sequeue,
 		Input:     tx.Input,
+		TimeStamp: tx.TimeStamp,
 	}
 	b, err := proto.Marshal(t)
 	if err != nil {
@@ -42,7 +44,7 @@ func (tx *Tx) VerifySignedTx() (bool, error) {
 }
 
 func (txs *Txs) MerkleRoot() []byte {
-	txSigns := make([][]byte, len(txs.Tansactions))
+	txSigns := make([][]byte, 0, len(txs.Tansactions))
 	for i := range txs.Tansactions {
 		txSigns = append(txSigns, txs.Tansactions[i].Sign)
 	}
@@ -50,7 +52,7 @@ func (txs *Txs) MerkleRoot() []byte {
 }
 
 func (txRs *TxReceipts) MerkleRoot() []byte {
-	txrSigns := make([][]byte, len(txRs.TansactionReceipts))
+	txrSigns := make([][]byte, 0, len(txRs.TansactionReceipts))
 	for i := range txRs.TansactionReceipts {
 		txrSigns = append(txrSigns, txRs.TansactionReceipts[i].Sign)
 	}
@@ -75,4 +77,25 @@ func (am *Amount) SubAmount(amb *Amount) {
 	biga, _ := big.NewInt(0).SetString(am.Amount, 0)
 	bigb, _ := big.NewInt(0).SetString(amb.Amount, 0)
 	am.Amount = big.NewInt(0).Sub(biga, bigb).String()
+}
+
+func (txr *TxReceipt) SignedTxReceipt(priv *ecdsa.PrivateKey) error {
+	t := &TxReceipt{
+		Status: txr.Status,
+		TxId:   txr.TxId,
+	}
+	b, err := proto.Marshal(t)
+	if err != nil {
+		return err
+	}
+	sh := sha256.New()
+	sh.Write(b)
+	hash := sh.Sum(nil)
+
+	sign, err := cryptogo.Sign(priv, hash)
+	if err != nil {
+		return err
+	}
+	txr.Sign, err = cryptogo.Hex2Bytes(sign)
+	return err
 }

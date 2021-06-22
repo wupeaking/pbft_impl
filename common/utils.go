@@ -3,6 +3,10 @@ package common
 import "crypto/sha256"
 
 func Merkel(arrs [][]byte) []byte {
+	if len(arrs) == 0 {
+		sh := sha256.New()
+		return sh.Sum(nil)
+	}
 	if len(arrs) == 1 {
 		sh := sha256.New()
 		sh.Write(arrs[0])
