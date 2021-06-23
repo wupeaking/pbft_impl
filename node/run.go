@@ -7,6 +7,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/wupeaking/pbft_impl/api"
 	"github.com/wupeaking/pbft_impl/blockchain"
 	"github.com/wupeaking/pbft_impl/common/config"
 	"github.com/wupeaking/pbft_impl/consensus"
@@ -29,6 +30,7 @@ type PBFTNode struct {
 	chain           *blockchain.BlockChain
 	tx              *transaction.TxPool
 	vm              *cvm.VirtualMachine
+	apiServer       *api.API
 }
 
 func New() *PBFTNode {
@@ -58,7 +60,7 @@ func New() *PBFTNode {
 	}
 
 	vm := cvm.New(db, cfg)
-	txPool := transaction.NewTxPool(switcher, cfg)
+	txPool := transaction.NewTxPool(switcher, cfg, db)
 
 	var consen *consensus.PBFT
 
@@ -88,7 +90,7 @@ func New() *PBFTNode {
 		if err := ws.SetGenesis(&zeroBlock); err != nil {
 			panic(err)
 		}
-		ws.SetValue(0, "", "genesis", zeroBlock.Verifiers)
+		ws.SetValue(0, "", model.GenesisBlockId, zeroBlock.Verifiers)
 		ws.UpdateLastWorldState()
 
 		pbft, err := consensus.New(ws, txPool, switcher, vm, cfg)
@@ -125,6 +127,7 @@ func New() *PBFTNode {
 	}
 
 	chain := blockchain.New(consen, ws, switcher)
+	apiServer := api.New(cfg)
 
 	return &PBFTNode{
 		consensusEngine: consen,
@@ -133,6 +136,7 @@ func New() *PBFTNode {
 		chain:           chain,
 		tx:              txPool,
 		vm:              vm,
+		apiServer:       apiServer,
 	}
 }
 
@@ -168,6 +172,15 @@ func (node *PBFTNode) Run() {
 	go node.chain.Start()
 	// 启动交易池
 	go node.tx.Start()
+
+	// 启动API服务
+	node.apiServer.GET("/", node.apiServer.DefaultHandler)
+	node.apiServer.Group("/blockchain")
+	node.tx.StartAPI(node.apiServer.Group("/tx"))
+	node.apiServer.Group("/consensus")
+	node.apiServer.Group("/ws")
+	node.apiServer.Group("/account")
+	go node.apiServer.Start()
 
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM,

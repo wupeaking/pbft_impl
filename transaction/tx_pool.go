@@ -34,14 +34,14 @@ type txReadMark struct {
 }
 type TxPool struct {
 	switcher network.SwitcherI
-	db       cache.DBCache
+	db       *cache.DBCache
 	pool     *lru.Cache
 	cap      int
 	txIds    map[string]txReadMark
 	sync.RWMutex
 }
 
-func NewTxPool(switcher network.SwitcherI, cfg *config.Configure) *TxPool {
+func NewTxPool(switcher network.SwitcherI, cfg *config.Configure, db *cache.DBCache) *TxPool {
 	switch strings.ToLower(cfg.TxCfg.LogLevel) {
 	case "debug":
 		logger.Logger.SetLevel(log.DebugLevel)
@@ -61,6 +61,7 @@ func NewTxPool(switcher network.SwitcherI, cfg *config.Configure) *TxPool {
 		pool:     pool,
 		cap:      cfg.MaxTxNum,
 		txIds:    make(map[string]txReadMark),
+		db:       db,
 	}
 }
 
@@ -142,7 +143,8 @@ func (txpool *TxPool) AddTx(tx *model.Tx) bool {
 	}
 	key := fmt.Sprintf("%0x", tx.Sign)
 	txpool.txIds[key] = txReadMark{false}
-	return txpool.pool.Add(key, tx)
+	txpool.pool.Add(key, tx)
+	return true
 }
 
 func (txpool *TxPool) RemoveTx(tx *model.Tx) {

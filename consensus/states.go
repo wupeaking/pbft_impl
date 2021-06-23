@@ -350,7 +350,10 @@ func (pbft *PBFT) StateMigrate(msg *model.PbftMessage) {
 		// 重放区块
 		// 切换到not start
 		// todo:: 需要判断提交是否成功 如果不成功 则转换到viewchang
-		pbft.CommitBlock(pbft.sm.receivedBlock)
+		if err := pbft.CommitBlock(pbft.sm.receivedBlock); err != nil {
+			pbft.ChangeState(model.States_ViewChanging)
+			return
+		}
 		pbft.ChangeState(model.States_NotStartd)
 
 	case model.States_ViewChanging:

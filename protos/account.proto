@@ -17,7 +17,7 @@ message Account {
 
 // 一个账户 可以是下面几个类型的合集
 enum AccountType {
-    Default = 0; // default
+    Unkown = 0; // default
     Normal = 1; // 普通账户
     Code = 2;  // 合约账户
     Admin = 4; // 管理员账户

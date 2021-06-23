@@ -69,11 +69,16 @@ type DBCfg struct {
 	LogLevel      string `json:"logLevel"`
 }
 
+type WebCfg struct {
+	Port int `json:"port" yaml:"port"`
+}
+
 type Configure struct {
 	ConsensusCfg `json:"consensus"`
 	TxCfg        `json:"transaction"`
 	NetworkCfg   `json:"network"`
 	DBCfg        `json:"db"`
+	WebCfg       `json:"web"`
 }
 
 // 加载和初始化配置
@@ -128,6 +133,9 @@ func DefaultConfig() (*Configure, error) {
 		},
 		DBCfg{
 			StorageEngine: "levelDB",
+		},
+		WebCfg{
+			Port: 8088,
 		},
 	}, nil
 }
