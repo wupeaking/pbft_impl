@@ -38,13 +38,13 @@ func (api *API) Start() {
 }
 
 func (api *API) DefaultHandler(ctx echo.Context) error {
-	ctx.Blob(200, "application/json", []byte(`
+	return ctx.Blob(200, "application/json", []byte(`
 	/blockchain/   区块链服务
 	/consensus/  共识服务
 	/ws/   全局状态
-	
+	/tx/   交易
+	/account/ 账户
 	`))
-	return nil
 }
 
 func httpErrorHandler(err error, c echo.Context) {

@@ -32,9 +32,9 @@ import (
 
 type PBFT struct {
 	// 当前所属状态
-	sm                *StateMachine
-	mm                *MsgManager
-	verifiers         map[string]*model.Verifier
+	sm *StateMachine
+	mm *MsgManager
+	// verifiers         map[string]*model.Verifier
 	verifierPeerID    map[string]string // peerID --- string(singer)
 	Msgs              *MsgQueue
 	stateTimeout      *time.Timer // 状态转换超时器
@@ -135,16 +135,16 @@ func New(ws *world_state.WroldState, txPool *transaction.TxPool, switcher networ
 	pbft.logger = l.WithField("module", "consensus")
 
 	pbft.ws = ws
-	pbft.verifiers = make(map[string]*model.Verifier)
-	for _, v := range ws.Verifiers {
-		pbft.verifiers[string(v.PublickKey)] = v
-	}
+	// pbft.verifiers = make(map[string]*model.Verifier)
+	// for _, v := range ws.Verifiers {
+	// 	pbft.verifiers[string(v.PublickKey)] = v
+	// }
 	pbft.verifierPeerID = make(map[string]string)
 
 	// 转换验证者的peer id
-	if err := pbft.LoadVerfierPeerIDs(); err != nil {
-		return nil, err
-	}
+	// if err := pbft.LoadVerfierPeerIDs(); err != nil {
+	// 	return nil, err
+	// }
 
 	pbft.broadcastSig = make(chan *StateMsg, 100)
 	pbft.txPool = txPool

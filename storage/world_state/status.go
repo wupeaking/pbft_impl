@@ -10,15 +10,16 @@ import (
 // 定义整个全局状态
 
 type WroldState struct {
-	BlockNum   uint64            `json:"blockNum"`   // 当前区块编号
-	PrevBlock  string            `json:"prevBlock"`  // 前一个区块hash
-	BlockID    string            `json:"blockID"`    // 当前区块hash
-	Verifiers  []*model.Verifier `json:"verifiers"`  // 当前所有的验证者
-	VerifierNo int               `josn:"verifierNo"` // 验证者所处编号 如果为-1  表示不是验证者
-	CurVerfier *model.Verifier   `json:"curVerfier"`
-	View       uint64            `json:"view"` // 当前视图
-	db         *cache.DBCache
-	sync.Mutex `json:"-"`
+	BlockNum     uint64            `json:"blockNum"`  // 当前区块编号
+	PrevBlock    string            `json:"prevBlock"` // 前一个区块hash
+	BlockID      string            `json:"blockID"`   // 当前区块hash
+	Verifiers    []*model.Verifier `json:"verifiers"` // 当前所有的验证者
+	VerifiersMap map[string]struct{}
+	VerifierNo   int             `josn:"verifierNo"` // 验证者所处编号 如果为-1  表示不是验证者
+	CurVerfier   *model.Verifier `json:"curVerfier"`
+	View         uint64          `json:"view"` // 当前视图
+	db           *cache.DBCache
+	sync.RWMutex `json:"-"`
 }
 
 func New(dbCache *cache.DBCache) *WroldState {
@@ -65,4 +66,21 @@ func (ws *WroldState) SetValue(blockNum uint64, prevBlock string, blockID string
 	if len(verifiers) > 0 {
 		ws.Verifiers = verifiers
 	}
+}
+
+func (ws *WroldState) IsVerfier(publicKey []byte) bool {
+	ws.RLock()
+	defer func() { ws.RUnlock() }()
+	_, ok := ws.VerifiersMap[string(publicKey)]
+	return ok
+}
+
+func (ws *WroldState) updateVerifierMap() {
+	ws.Lock()
+	defer func() { ws.Unlock() }()
+	newValue := make(map[string]struct{})
+	for i := range ws.Verifiers {
+		newValue[string(ws.Verifiers[i].PublickKey)] = struct{}{}
+	}
+	ws.VerifiersMap = newValue
 }

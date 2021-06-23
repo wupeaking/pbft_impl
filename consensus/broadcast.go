@@ -5,22 +5,20 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	cryptogo "github.com/wupeaking/pbft_impl/crypto"
 	"github.com/wupeaking/pbft_impl/model"
 	"github.com/wupeaking/pbft_impl/network"
-	"github.com/wupeaking/pbft_impl/network/libp2p"
 )
 
-func (pbft *PBFT) LoadVerfierPeerIDs() error {
-	for _, v := range pbft.verifiers {
-		id, err := libp2p.PublicString2PeerID(cryptogo.Bytes2Hex(v.PublickKey))
-		if err != nil {
-			return err
-		}
-		pbft.verifierPeerID[id] = string(v.PublickKey)
-	}
-	return nil
-}
+// func (pbft *PBFT) LoadVerfierPeerIDs() error {
+// 	for _, v := range pbft.verifiers {
+// 		id, err := libp2p.PublicString2PeerID(cryptogo.Bytes2Hex(v.PublickKey))
+// 		if err != nil {
+// 			return err
+// 		}
+// 		pbft.verifierPeerID[id] = string(v.PublickKey)
+// 	}
+// 	return nil
+// }
 
 func (pbft *PBFT) AddBroadcastTask(msg *StateMsg) {
 	select {

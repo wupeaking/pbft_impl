@@ -1,6 +1,7 @@
 package world_state
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/wupeaking/pbft_impl/model"
@@ -25,7 +26,22 @@ func (ws *WroldState) GetBlockMeta() (*model.BlockMeta, error) {
 	if err != nil {
 		return meta, err
 	}
+	if meta == nil {
+		return nil, fmt.Errorf("block_meta不存在")
+	}
+	ws.BlockNum = meta.BlockHeight
 	ws.View = meta.LastView
+	ws.CurVerfier = meta.CurVerfier
+	ws.VerifierNo = int(meta.VerifierNo)
+	ws.Verifiers = meta.Verifiers
+	ws.updateVerifierMap()
+	if ws.BlockNum == 0 {
+		ws.BlockID = model.GenesisBlockId
+		return meta, nil
+	}
+	blk, err := ws.GetBlock(ws.BlockNum)
+	ws.BlockID = blk.BlockId
+	ws.PrevBlock = blk.PrevBlock
 	return meta, err
 }
 

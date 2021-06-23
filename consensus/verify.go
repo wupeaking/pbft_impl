@@ -384,8 +384,7 @@ func (pbft *PBFT) signBlock(blk *model.PbftBlock) (*model.PbftBlock, error) {
 }
 
 func (pbft *PBFT) IsVaildVerifier(singerID []byte) bool {
-	_, ok := pbft.verifiers[string(singerID)]
-	return ok
+	return pbft.ws.IsVerfier(singerID)
 }
 
 func (pbft *PBFT) isValidMsg(msg *model.PbftMessage) bool {
