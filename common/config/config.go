@@ -73,12 +73,21 @@ type WebCfg struct {
 	Port int `json:"port" yaml:"port"`
 }
 
+type Account struct {
+	Address string `json:"address" yaml:"address"`
+	Type    int    `json:"type"`
+	Amount  uint64 `json:"amount"`
+}
+
+type AccountCfg []Account
+
 type Configure struct {
 	ConsensusCfg `json:"consensus"`
 	TxCfg        `json:"transaction"`
 	NetworkCfg   `json:"network"`
 	DBCfg        `json:"db"`
 	WebCfg       `json:"web"`
+	AccountCfg   `json:"account"`
 }
 
 // 加载和初始化配置
@@ -137,6 +146,7 @@ func DefaultConfig() (*Configure, error) {
 		WebCfg{
 			Port: 8088,
 		},
+		AccountCfg{},
 	}, nil
 }
 

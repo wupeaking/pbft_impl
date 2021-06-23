@@ -33,6 +33,17 @@ func main() {
 							return account.GenerateAccount(c.String("s"), c.Bool("v"))
 						},
 					},
+					{
+						Name:    "pub2address",
+						Aliases: []string{"p2a"},
+						Usage:   "公钥转换地址",
+						Flags: []cli.Flag{
+							&cli.StringFlag{Name: "pub", Usage: "公钥", Required: true},
+						},
+						Action: func(c *cli.Context) error {
+							return account.PublicKeyToAddress(c.String("pub"))
+						},
+					},
 				},
 			},
 		},

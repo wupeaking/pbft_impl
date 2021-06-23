@@ -98,6 +98,18 @@ func New() *PBFTNode {
 			logger.Fatalf("读取配置文件发生错误 err: %v", err)
 		}
 		consen = pbft
+
+		// 加载预设值的账户
+		for i := range cfg.AccountCfg {
+			acc := &model.Account{
+				Id:          &model.Address{Address: cfg.AccountCfg[i].Address},
+				Balance:     &model.Amount{Amount: fmt.Sprintf("%d", cfg.AccountCfg[i].Amount)},
+				AccountType: int32(cfg.AccountCfg[i].Type),
+			}
+			if err := db.Insert(acc); err != nil {
+				panic(err)
+			}
+		}
 	} else {
 		logger.Infof("读取到本地创世区块, 本地配置文件某些配置项可能会被覆盖")
 		ws.Verifiers = genesis.Verifiers

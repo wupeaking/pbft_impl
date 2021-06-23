@@ -12,7 +12,9 @@ import (
 )
 
 func PublicKeyToAddress(pub []byte) *Address {
-	hash := sha256.New().Sum(pub)
+	h := sha256.New()
+	h.Write(pub)
+	hash := h.Sum(nil)
 	hexStr := fmt.Sprintf("0x%x", hash)
 	return &Address{Address: hexStr}
 }

@@ -38,5 +38,22 @@
     "db":{
         "storageEngine": "leveldb",
         "logLevel": "Debug"
-    }
+    },
+    "account": [
+        {
+            "address":"0xf52772d71e21a42e8cd2c5987ed3bb99420fecf4c7aca797b926a8f01ea6ffd8",
+            "amount": 100000000,
+            "type": 1
+        },
+        {
+            "address":"0x4abdf9c6391f193f3829f25204a1309d5c1c53dceb920c529c65a04d3d6c7317",
+            "amount": 100000000,
+            "type": 1
+        },
+        {
+            "address":"0xf5e99aea09cf53e2e19c3d10b1d6283bfa1ab67c65d9fb29c75122561705bf56",
+            "amount": 100000000,
+            "type": 1
+        }
+    ]
 }
