@@ -26,11 +26,10 @@ func main() {
 						Aliases: []string{"c"},
 						Usage:   "创建一个新的账户",
 						Flags: []cli.Flag{
-							&cli.BoolFlag{Name: "v", Usage: "是否在屏幕打印", Value: true},
-							&cli.StringFlag{Name: "s", Usage: "保存文件名称"},
+							&cli.StringFlag{Name: "password", Usage: "密码", DefaultText: "123456"},
 						},
 						Action: func(c *cli.Context) error {
-							return account.GenerateAccount(c.String("s"), c.Bool("v"))
+							return account.GenerateAccount(c.String("password"))
 						},
 					},
 					{
