@@ -7,6 +7,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/wupeaking/pbft_impl/account"
 	"github.com/wupeaking/pbft_impl/api"
 	"github.com/wupeaking/pbft_impl/blockchain"
 	"github.com/wupeaking/pbft_impl/common/config"
@@ -31,6 +32,7 @@ type PBFTNode struct {
 	tx              *transaction.TxPool
 	vm              *cvm.VirtualMachine
 	apiServer       *api.API
+	db              *cache.DBCache
 }
 
 func New() *PBFTNode {
@@ -149,6 +151,7 @@ func New() *PBFTNode {
 		tx:              txPool,
 		vm:              vm,
 		apiServer:       apiServer,
+		db:              db,
 	}
 }
 
@@ -191,7 +194,7 @@ func (node *PBFTNode) Run() {
 	node.tx.StartAPI(node.apiServer.Group("/tx"))
 	node.apiServer.Group("/consensus")
 	node.apiServer.Group("/ws")
-	node.apiServer.Group("/account")
+	account.NewAccountApi(node.db).StartAPI(node.apiServer.Group("/account"))
 	go node.apiServer.Start()
 
 	sig := make(chan os.Signal)

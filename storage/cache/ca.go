@@ -49,11 +49,16 @@ func New(filepath string) *DBCache {
 	if err != nil {
 		panic(err)
 	}
+	accountDB, err := database.NewLevelDB(path.Join(filepath, "./pbft/account.db"))
+	if err != nil {
+		panic(err)
+	}
 	dbCahce := &DBCache{
 		blockDB:     blockDB,
 		metaDB:      metaDB,
 		txDB:        txDB,
 		txReceiptDB: txRecDB,
+		accountDB:   accountDB,
 	}
 	blkCahce, err := lru.New(1024)
 	if err != nil {
