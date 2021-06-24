@@ -200,7 +200,7 @@ func Transfer(api, to, password, address string, index int, amount int64) error 
 		Sequeue:   tx.Sequeue,
 		Timestamp: tx.TimeStamp,
 	}
-	fmt.Printf("request: %#v\n", request)
+	// fmt.Printf("request: %#v\n", request)
 	reqBody, err := json.Marshal(request)
 	if err != nil {
 		return err
