@@ -43,6 +43,42 @@ func main() {
 							return account.PublicKeyToAddress(c.String("pub"))
 						},
 					},
+					{
+						Name:  "balance",
+						Usage: "查询账户余额",
+						Flags: []cli.Flag{
+							&cli.StringFlag{Name: "api", Usage: "api地址", DefaultText: "http://localhost:8088"},
+						},
+						Action: func(c *cli.Context) error {
+							return account.Balance(c.String("api"))
+						},
+					},
+					{
+						Name:  "transfer",
+						Usage: "转账",
+						Flags: []cli.Flag{
+							&cli.StringFlag{Name: "api", Usage: "api地址", DefaultText: "http://localhost:8088"},
+							&cli.StringFlag{Name: "password", Usage: "账户密码", DefaultText: "123456"},
+							&cli.StringFlag{Name: "to", Usage: "接收方地址", Required: true},
+							&cli.IntFlag{Name: "index", Usage: "账户序号", DefaultText: "-1"},
+							&cli.StringFlag{Name: "address", Usage: "账户地址"},
+							&cli.Int64Flag{Name: "amount", Usage: "转账金额"},
+						},
+						Action: func(c *cli.Context) error {
+							return account.Transfer(c.String("api"), c.String("to"),
+								c.String("password"), c.String("address"), c.Int("index"), c.Int64("amount"))
+						},
+					},
+					{
+						Name:  "list",
+						Usage: "列出所有账户",
+						Flags: []cli.Flag{
+							&cli.StringFlag{Name: "password", Usage: "账户密码"},
+						},
+						Action: func(c *cli.Context) error {
+							return account.List(c.String("password"))
+						},
+					},
 				},
 			},
 		},

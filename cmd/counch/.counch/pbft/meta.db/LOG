@@ -50,3 +50,41 @@
 22:54:51.098394 version@stat F·[1] S·305B[305B] Sc·[0.25]
 22:54:51.104958 db@janitor F·3 G·0
 22:54:51.105001 db@open done T·7.4696ms
+=============== Jun 24, 2021 (CST) ===============
+11:52:48.571473 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+11:52:48.571564 version@stat F·[1] S·305B[305B] Sc·[0.25]
+11:52:48.571572 db@open opening
+11:52:48.571605 journal@recovery F·1
+11:52:48.572414 journal@recovery recovering @11
+11:52:48.575883 memdb@flush created L0@13 N·21 S·555B "blo..eta,v27":"blo..eta,v7"
+11:52:48.576307 version@stat F·[2] S·860B[860B] Sc·[0.50]
+11:52:48.585786 db@janitor F·4 G·0
+11:52:48.585810 db@open done T·14.231946ms
+=============== Jun 24, 2021 (CST) ===============
+12:42:46.519868 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+12:42:46.519959 version@stat F·[2] S·860B[860B] Sc·[0.50]
+12:42:46.519967 db@open opening
+12:42:46.520005 journal@recovery F·1
+12:42:46.521184 journal@recovery recovering @14
+12:42:46.524367 memdb@flush created L0@16 N·4 S·290B "blo..eta,v32":"blo..eta,v29"
+12:42:46.525331 version@stat F·[3] S·1KiB[1KiB] Sc·[0.75]
+12:42:46.535460 db@janitor F·5 G·0
+12:42:46.535484 db@open done T·15.511467ms
+=============== Jun 24, 2021 (CST) ===============
+12:45:52.819124 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+12:45:52.819342 version@stat F·[3] S·1KiB[1KiB] Sc·[0.75]
+12:45:52.819352 db@open opening
+12:45:52.819403 journal@recovery F·1
+12:45:52.819504 journal@recovery recovering @17
+12:45:52.825687 memdb@flush created L0@19 N·2 S·260B "blo..eta,v35":"blo..eta,v34"
+12:45:52.826105 version@stat F·[4] S·1KiB[1KiB] Sc·[1.00]
+12:45:52.838062 db@janitor F·6 G·0
+12:45:52.838080 db@open done T·18.72265ms
+12:45:52.838140 table@compaction L0·4 -> L1·0 S·1KiB Q·36
+12:45:52.841430 table@build created L1@22 N·1 S·239B "blo..eta,v35":"blo..eta,v35"
+12:45:52.841510 version@stat F·[0 1] S·239B[0B 239B] Sc·[0.00 0.00]
+12:45:52.858902 table@compaction committed F-3 S-1KiB Ke·0 D·31 T·20.728366ms
+12:45:52.858986 table@remove removed @19
+12:45:52.859090 table@remove removed @16
+12:45:52.859125 table@remove removed @13
+12:45:52.859147 table@remove removed @2

@@ -45,6 +45,34 @@ func (tx *Tx) VerifySignedTx() (bool, error) {
 	return cryptogo.VerifySign(pub, fmt.Sprintf("%0x", tx.Sign), fmt.Sprintf("0x%x", hash)), nil
 }
 
+func (tx *Tx) SignTx(priv *ecdsa.PrivateKey) error {
+	t := &Tx{
+		Recipient: tx.Recipient,
+		Amount:    tx.Amount,
+		Sequeue:   tx.Sequeue,
+		Input:     tx.Input,
+		TimeStamp: tx.TimeStamp,
+	}
+	b, err := proto.Marshal(t)
+	if err != nil {
+		return err
+	}
+	sh := sha256.New()
+	sh.Write(b)
+	hash := sh.Sum(nil)
+
+	signed, err := cryptogo.Sign(priv, hash)
+	if err != nil {
+		return err
+	}
+	t.Sign, _ = cryptogo.Hex2Bytes(signed)
+
+	t.PublickKey = make([]byte, 0)
+	t.PublickKey = append(t.PublickKey, priv.PublicKey.X.Bytes()...)
+	t.PublickKey = append(t.PublickKey, priv.PublicKey.Y.Bytes()...)
+	return nil
+}
+
 func (tx *Tx) IsVaildTx() bool {
 	if tx.Sender == nil || tx.Sender.Address == "" ||
 		tx.Sequeue == "" || len(tx.Sign) == 0 || len(tx.PublickKey) == 0 ||

@@ -48,6 +48,16 @@ func AesEncrypt(origData, key []byte) ([]byte, error) {
 
 //@brief:AES解密
 func AesDecrypt(crypted, key []byte) ([]byte, error) {
+	switch {
+	case len(key) <= 16:
+		key = append(key, make([]byte, 16-len(key))...)
+	case len(key) <= 24 && len(key) > 16:
+		key = append(key, make([]byte, 24-len(key))...)
+	case len(key) <= 32 && len(key) > 24:
+		key = append(key, make([]byte, 32-len(key))...)
+	default:
+		key = key[0:32]
+	}
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
