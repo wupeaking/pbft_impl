@@ -42,10 +42,7 @@ func GenerateAccount(password string) error {
 		return err
 	}
 	priBytes, _ := cryptogo.Hex2Bytes(pri)
-	priCrypto, err := cryptogo.AesEncrypt(priBytes, []byte(password))
-	if err != nil {
-		return err
-	}
+	priCrypto := cryptogo.AESEncrypt(priBytes, []byte(password))
 	priCryptoStr := cryptogo.Bytes2Hex(priCrypto)
 	pubByte, err := cryptogo.Hex2Bytes(pub)
 	if err != nil {
@@ -96,7 +93,7 @@ func Balance(api string) error {
 		if err := rows.Scan(&address); err != nil {
 			return err
 		}
-		resp, err := http.Get(api + "account/" + address)
+		resp, err := http.Get(api + "/account/" + address)
 		if err != nil {
 			return err
 		}
@@ -106,9 +103,9 @@ func Balance(api string) error {
 			return err
 		}
 		respValue := struct {
-			Code    int            `json:"code"`
-			Message string         `json:"message"`
-			Data    *model.Account `json:"data"`
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+			// Data    *model.Account `json:"data"`
 		}{}
 		if err := json.Unmarshal(content, &respValue); err != nil {
 			return err
@@ -117,6 +114,14 @@ func Balance(api string) error {
 			continue
 		}
 		if respValue.Code == 0 {
+			respValue := struct {
+				Code    int            `json:"code"`
+				Message string         `json:"message"`
+				Data    *model.Account `json:"data"`
+			}{}
+			if err := json.Unmarshal(content, &respValue); err != nil {
+				return err
+			}
 			b, _ := strconv.ParseUint(respValue.Data.Balance.Amount, 10, 64)
 			balance += b
 			continue
@@ -129,7 +134,7 @@ func Balance(api string) error {
 }
 
 func Transfer(api, to, password, address string, index int, amount int64) error {
-	if address == "" || index == -1 {
+	if address == "" && index == -1 {
 		return fmt.Errorf("账户地址或者编号必须任选其一")
 	}
 	db, err := sqlx.Open("sqlite3", "account.db")
@@ -160,7 +165,10 @@ func Transfer(api, to, password, address string, index int, amount int64) error 
 
 	priCrypro, _ := cryptogo.Hex2Bytes(pri)
 	// 解密私钥
-	private, err := cryptogo.AesDecrypt(priCrypro, []byte(password))
+	private, err := cryptogo.AESDecrypt(priCrypro, []byte(password))
+	if err != nil {
+		return err
+	}
 	privateKey, err := cryptogo.LoadPrivateKey(cryptogo.Bytes2Hex(private))
 	if err != nil {
 		return err
@@ -177,16 +185,22 @@ func Transfer(api, to, password, address string, index int, amount int64) error 
 		return err
 	}
 
-	url := address + "/tx/tansaction/" + cryptogo.Bytes2Hex(tx.Sign)
+	url := api + "/tx/tansaction/" + cryptogo.Bytes2Hex(tx.Sign)
 	request := struct {
 		From      string `json:"from"`
 		To        string `json:"to"`
 		Amount    uint64 `json:"amount"`
 		Sign      string `json:"sign"`
 		PublicKey string `json:"publick_key"`
+		Sequeue   string `json:"sequeue"`
+		Timestamp uint64 `json:"timestamp"`
 	}{From: address, To: to, Amount: uint64(amount),
 		Sign:      cryptogo.Bytes2Hex(tx.Sign),
-		PublicKey: cryptogo.Bytes2Hex(tx.PublickKey)}
+		PublicKey: cryptogo.Bytes2Hex(tx.PublickKey),
+		Sequeue:   tx.Sequeue,
+		Timestamp: tx.TimeStamp,
+	}
+	fmt.Printf("request: %#v\n", request)
 	reqBody, err := json.Marshal(request)
 	if err != nil {
 		return err
@@ -230,9 +244,14 @@ func List(password string) error {
 			return err
 		}
 		if password != "" {
-			priCrypro, _ := cryptogo.Hex2Bytes(pri)
+			println(pri)
+			priCrypro, err := cryptogo.Hex2Bytes(pri)
+			if err != nil {
+				return err
+			}
 			// 解密私钥
-			private, err := cryptogo.AesDecrypt(priCrypro, []byte(password))
+			// println("解密使用的密码为:", password)
+			private, err := cryptogo.AESDecrypt(priCrypro, []byte(password))
 			if err != nil {
 				return err
 			}
@@ -244,5 +263,36 @@ func List(password string) error {
 
 	fmt.Printf("累计: %d \n", num)
 	fmt.Printf("-------------------------\n")
+	return nil
+}
+
+func Import(private, password string) error {
+	pri, err := cryptogo.LoadPrivateKey(private)
+	if err != nil {
+		return err
+	}
+	pubStr := fmt.Sprintf("0x%x%x", pri.PublicKey.X.Bytes(),
+		pri.PublicKey.Y.Bytes())
+	priStr := fmt.Sprintf("0x%x", pri.D.Bytes())
+	pubBytes, _ := cryptogo.Hex2Bytes(pubStr)
+	address := model.PublicKeyToAddress(pubBytes)
+
+	// 对私钥进行加密
+	priBytes, _ := cryptogo.Hex2Bytes(priStr)
+	println("加密的密码为: %s", password)
+	priCrypto := cryptogo.AESEncrypt(priBytes, []byte(password))
+	priCryptoStr := cryptogo.Bytes2Hex(priCrypto)
+
+	db, err := sqlx.Open("sqlite3", "account.db")
+	defer db.Close()
+	if err != nil {
+		return err
+	}
+	ret, err := db.Exec("insert into account_info(address, public, private) values($1, $2, $3)", address.Address, pubStr, priCryptoStr)
+	if err != nil {
+		return err
+	}
+	id, _ := ret.LastInsertId()
+	fmt.Printf("导入成功 序号: %d \n", id)
 	return nil
 }

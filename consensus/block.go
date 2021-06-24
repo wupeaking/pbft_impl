@@ -37,6 +37,9 @@ func (pbft *PBFT) packageBlock() (*model.PbftBlock, error) {
 		}
 		txs = append(txs, ts...)
 	}
+	if len(txs) != 0 {
+		pbft.logger.Debugf("本次打包的交易数量为: %d", len(txs))
+	}
 	blk.Tansactions = &model.Txs{Tansactions: txs}
 	// todo:: 需要调用执行txs模块 生成blk.TransactionReceipts
 	blk.TransactionReceipts = &model.TxReceipts{TansactionReceipts: make([]*model.TxReceipt, 0)}

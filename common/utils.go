@@ -24,8 +24,7 @@ func Merkel(arrs [][]byte) []byte {
 		if i+1 >= len(arrs) {
 			break
 		}
-		newArrs = append(newArrs, Merkel([][]byte{arrs[i]}))
-		newArrs = append(newArrs, Merkel([][]byte{arrs[i+1]}))
+		newArrs = append(newArrs, Merkel([][]byte{arrs[i], arrs[i+1]}))
 		i += 2
 	}
 	if i == len(arrs)-1 {

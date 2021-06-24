@@ -42,6 +42,9 @@ func (tx *Tx) VerifySignedTx() (bool, error) {
 	sh.Write(b)
 	hash := sh.Sum(nil)
 	pub, err := cryptogo.LoadPublicKeyFromBytes(tx.PublickKey)
+	if err != nil {
+		return false, err
+	}
 	return cryptogo.VerifySign(pub, fmt.Sprintf("%0x", tx.Sign), fmt.Sprintf("0x%x", hash)), nil
 }
 
@@ -65,11 +68,11 @@ func (tx *Tx) SignTx(priv *ecdsa.PrivateKey) error {
 	if err != nil {
 		return err
 	}
-	t.Sign, _ = cryptogo.Hex2Bytes(signed)
+	tx.Sign, _ = cryptogo.Hex2Bytes(signed)
 
-	t.PublickKey = make([]byte, 0)
-	t.PublickKey = append(t.PublickKey, priv.PublicKey.X.Bytes()...)
-	t.PublickKey = append(t.PublickKey, priv.PublicKey.Y.Bytes()...)
+	tx.PublickKey = make([]byte, 0)
+	tx.PublickKey = append(tx.PublickKey, priv.PublicKey.X.Bytes()...)
+	tx.PublickKey = append(tx.PublickKey, priv.PublicKey.Y.Bytes()...)
 	return nil
 }
 

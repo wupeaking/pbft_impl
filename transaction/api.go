@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"time"
 
 	"github.com/labstack/echo"
 	"github.com/wupeaking/pbft_impl/api"
@@ -45,7 +44,10 @@ func (t *TxPool) addTxHandler(ctx echo.Context) error {
 		Amount    uint64 `json:"amount"`
 		Sign      string `json:"sign"`
 		PublicKey string `json:"publick_key"`
+		Sequeue   string `json:"sequeue"`
+		Timestamp uint64 `json:"timestamp"`
 	}{}
+
 	content, err := ioutil.ReadAll(ctx.Request().Body)
 	if err != nil {
 		return &echo.HTTPError{Code: -1, Internal: err}
@@ -54,20 +56,23 @@ func (t *TxPool) addTxHandler(ctx echo.Context) error {
 		return &echo.HTTPError{Code: -1, Internal: err}
 	}
 	signBytes, err := cryptogo.Hex2Bytes(request.Sign)
-	if err := json.Unmarshal(content, &request); err != nil {
+	if err != nil {
 		return &echo.HTTPError{Code: -1, Internal: err}
 	}
 	pub, err := cryptogo.Hex2Bytes(request.PublicKey)
-	if err := json.Unmarshal(content, &request); err != nil {
+	if err != nil {
 		return &echo.HTTPError{Code: -1, Internal: err}
 	}
+	fmt.Printf("received tx %#v\n", request)
 
 	tx := &model.Tx{
 		Sender:     &model.Address{Address: request.From},
-		Recipient:  &model.Address{Address: request.From},
+		Recipient:  &model.Address{Address: request.To},
 		Sign:       signBytes,
 		PublickKey: pub,
-		TimeStamp:  uint64(time.Now().Unix()),
+		TimeStamp:  request.Timestamp,
+		Sequeue:    request.Sequeue,
+		Amount:     &model.Amount{Amount: fmt.Sprintf("%d", request.Amount)},
 	}
 	if err := t.VerifyTx(tx); err != nil {
 		return &echo.HTTPError{Code: -1, Internal: err}

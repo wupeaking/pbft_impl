@@ -26,7 +26,7 @@ func main() {
 						Aliases: []string{"c"},
 						Usage:   "创建一个新的账户",
 						Flags: []cli.Flag{
-							&cli.StringFlag{Name: "password", Usage: "密码", DefaultText: "123456"},
+							&cli.StringFlag{Name: "password", Usage: "密码", DefaultText: "123456", Value: "123456"},
 						},
 						Action: func(c *cli.Context) error {
 							return account.GenerateAccount(c.String("password"))
@@ -47,7 +47,7 @@ func main() {
 						Name:  "balance",
 						Usage: "查询账户余额",
 						Flags: []cli.Flag{
-							&cli.StringFlag{Name: "api", Usage: "api地址", DefaultText: "http://localhost:8088"},
+							&cli.StringFlag{Name: "api", Usage: "api地址", DefaultText: "http://localhost:8088", Value: "http://localhost:8088"},
 						},
 						Action: func(c *cli.Context) error {
 							return account.Balance(c.String("api"))
@@ -57,8 +57,8 @@ func main() {
 						Name:  "transfer",
 						Usage: "转账",
 						Flags: []cli.Flag{
-							&cli.StringFlag{Name: "api", Usage: "api地址", DefaultText: "http://localhost:8088"},
-							&cli.StringFlag{Name: "password", Usage: "账户密码", DefaultText: "123456"},
+							&cli.StringFlag{Name: "api", Usage: "api地址", DefaultText: "http://localhost:8088", Value: "http://localhost:8088"},
+							&cli.StringFlag{Name: "password", Usage: "账户密码", DefaultText: "123456", Required: true},
 							&cli.StringFlag{Name: "to", Usage: "接收方地址", Required: true},
 							&cli.IntFlag{Name: "index", Usage: "账户序号", DefaultText: "-1"},
 							&cli.StringFlag{Name: "address", Usage: "账户地址"},
@@ -77,6 +77,17 @@ func main() {
 						},
 						Action: func(c *cli.Context) error {
 							return account.List(c.String("password"))
+						},
+					},
+					{
+						Name:  "import",
+						Usage: "导入一个账户",
+						Flags: []cli.Flag{
+							&cli.StringFlag{Name: "private", Usage: "私钥"},
+							&cli.StringFlag{Name: "password", Usage: "密码", DefaultText: "123456", Value: "123456"},
+						},
+						Action: func(c *cli.Context) error {
+							return account.Import(c.String("private"), c.String("password"))
 						},
 					},
 				},

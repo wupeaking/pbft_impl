@@ -1,73 +1,54 @@
 package cryptogo
 
 import (
-	"bytes"
 	"crypto/aes"
-	"crypto/cipher"
+	"errors"
 )
 
-//@brief:填充明文
-func PKCS5Padding(plaintext []byte, blockSize int) []byte {
-	padding := blockSize - len(plaintext)%blockSize
-	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
-	return append(plaintext, padtext...)
+func AESEncrypt(src []byte, key []byte) (encrypted []byte) {
+	cipher, _ := aes.NewCipher(generateKey(key))
+	length := (len(src) + aes.BlockSize) / aes.BlockSize
+	plain := make([]byte, length*aes.BlockSize)
+	copy(plain, src)
+	pad := byte(len(plain) - len(src))
+	for i := len(src); i < len(plain); i++ {
+		plain[i] = pad
+	}
+	encrypted = make([]byte, len(plain))
+	// 分组分块加密
+	for bs, be := 0, cipher.BlockSize(); bs <= len(src); bs, be = bs+cipher.BlockSize(), be+cipher.BlockSize() {
+		cipher.Encrypt(encrypted[bs:be], plain[bs:be])
+	}
+
+	return encrypted
 }
 
-//@brief:去除填充数据
-func PKCS5UnPadding(origData []byte) []byte {
-	length := len(origData)
-	unpadding := int(origData[length-1])
-	return origData[:(length - unpadding)]
+func AESDecrypt(encrypted []byte, key []byte) (decrypted []byte, err error) {
+	cipher, _ := aes.NewCipher(generateKey(key))
+	decrypted = make([]byte, len(encrypted))
+	//
+	for bs, be := 0, cipher.BlockSize(); bs < len(encrypted); bs, be = bs+cipher.BlockSize(), be+cipher.BlockSize() {
+		cipher.Decrypt(decrypted[bs:be], encrypted[bs:be])
+	}
+
+	trim := 0
+	if len(decrypted) > 0 {
+		trim = len(decrypted) - int(decrypted[len(decrypted)-1])
+	}
+	if trim > len(decrypted) {
+		return nil, errors.New("密码错误")
+	}
+
+	return decrypted[:trim], nil
 }
 
-//@brief:AES加密
-func AesEncrypt(origData, key []byte) ([]byte, error) {
-	switch {
-	case len(key) <= 16:
-		key = append(key, make([]byte, 16-len(key))...)
-	case len(key) <= 24 && len(key) > 16:
-		key = append(key, make([]byte, 24-len(key))...)
-	case len(key) <= 32 && len(key) > 24:
-		key = append(key, make([]byte, 32-len(key))...)
-	default:
-		key = key[0:32]
+func generateKey(key []byte) (genKey []byte) {
+	genKey = make([]byte, 16)
+	copy(genKey, key)
+	for i := 16; i < len(key); {
+		for j := 0; j < 16 && i < len(key); j, i = j+1, i+1 {
+			genKey[j] ^= key[i]
+		}
 	}
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	//AES分组长度为128位，所以blockSize=16，单位字节
-	blockSize := block.BlockSize()
-	origData = PKCS5Padding(origData, blockSize)
-	blockMode := cipher.NewCBCEncrypter(block, key[:blockSize]) //初始向量的长度必须等于块block的长度16字节
-	crypted := make([]byte, len(origData))
-	blockMode.CryptBlocks(crypted, origData)
-	return crypted, nil
-}
-
-//@brief:AES解密
-func AesDecrypt(crypted, key []byte) ([]byte, error) {
-	switch {
-	case len(key) <= 16:
-		key = append(key, make([]byte, 16-len(key))...)
-	case len(key) <= 24 && len(key) > 16:
-		key = append(key, make([]byte, 24-len(key))...)
-	case len(key) <= 32 && len(key) > 24:
-		key = append(key, make([]byte, 32-len(key))...)
-	default:
-		key = key[0:32]
-	}
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	//AES分组长度为128位，所以blockSize=16，单位字节
-	blockSize := block.BlockSize()
-	blockMode := cipher.NewCBCDecrypter(block, key[:blockSize]) //初始向量的长度必须等于块block的长度16字节
-	origData := make([]byte, len(crypted))
-	blockMode.CryptBlocks(origData, crypted)
-	origData = PKCS5UnPadding(origData)
-	return origData, nil
+	return genKey
 }

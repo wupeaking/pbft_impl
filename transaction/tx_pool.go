@@ -128,6 +128,7 @@ func (txpool *TxPool) GetTx(nums int) []*model.Tx {
 			continue
 		}
 
+		txpool.txIds[key] = txReadMark{true}
 		ret = append(ret, tx.(*model.Tx))
 		if len(ret) > nums {
 			break
@@ -142,8 +143,15 @@ func (txpool *TxPool) AddTx(tx *model.Tx) bool {
 		return false
 	}
 	key := fmt.Sprintf("%0x", tx.Sign)
-	txpool.txIds[key] = txReadMark{false}
-	txpool.pool.Add(key, tx)
+	_, ok := txpool.txIds[key]
+	if ok {
+		return true
+	} else {
+		txpool.Lock()
+		txpool.pool.Add(key, tx)
+		txpool.txIds[key] = txReadMark{false}
+		txpool.Unlock()
+	}
 	return true
 }
 
@@ -160,9 +168,17 @@ func (txpool *TxPool) VerifyTx(tx *model.Tx) error {
 	// 超过48小时的交易都忽略
 	// 或者比当前时间快5分钟
 	n := time.Now().Unix()
-	if tx.Sender == nil || tx.Sender.Address == "" ||
-		tx.Sequeue == "" || len(tx.Sign) == 0 || len(tx.PublickKey) == 0 {
-		return fmt.Errorf("交易数据格式错误")
+	if tx.Sender == nil || tx.Sender.Address == "" {
+		return fmt.Errorf("交易数据from地址为空")
+	}
+	if tx.Sequeue == "" {
+		return fmt.Errorf("交易数据序列号为空")
+	}
+	if len(tx.Sign) == 0 {
+		return fmt.Errorf("交易数据未签名")
+	}
+	if len(tx.PublickKey) == 0 {
+		return fmt.Errorf("交易数据公钥为空")
 	}
 	if n-int64(tx.TimeStamp) > 48*3600 || int64(tx.TimeStamp)-n > 5*60 {
 		return fmt.Errorf("交易时间戳错误")
@@ -171,7 +187,7 @@ func (txpool *TxPool) VerifyTx(tx *model.Tx) error {
 	accountAddr := model.PublicKeyToAddress(tx.PublickKey)
 
 	if tx.Sender.Address != accountAddr.Address {
-		return fmt.Errorf("账户ID和sender不匹配")
+		return fmt.Errorf("账户ID和sender不匹配 id: %s, sender: %s", accountAddr, tx.Sender.Address)
 	}
 	// 查询账户信息
 	account, err := txpool.db.GetAccountByID(tx.Sender.Address)
