@@ -114,7 +114,7 @@ OPTIONS:
 ### 如何启动一个新的贝壳链
 #### 1. 编译
 ```
-git clone https://github.com/
+git clone git@github.com:wupeaking/pbft_impl.git
 go build -v -o counch.x cmd/counch/main.go
 ```
 
