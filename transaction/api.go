@@ -31,7 +31,7 @@ func (t *TxPool) statusHandler(ctx echo.Context) error {
 	resp := struct {
 		PoolUsed int `json:"pool_used"`
 		PoolSize int `json:"pool_size"`
-	}{PoolSize: t.cap, PoolUsed: t.pool.Len()}
+	}{PoolSize: t.cap, PoolUsed: int(t.pool.len())}
 	respBody, _ := json.Marshal(resp)
 
 	return ctx.Blob(200, "application/json", respBody)

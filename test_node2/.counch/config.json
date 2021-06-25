@@ -24,7 +24,7 @@
         "logLevel": "Info"
     },
     "network":{
-        "netMode": "http",
+        "netMode": "p2p",
         "localAddr": "127.0.0.1:29876",
 	    "nodeAddrs": [
             {"address": "http://127.0.0.1:19876", "peerID": "QmTGDM1mXFpsZSCxX6vpriHQoWmzC1BGvduFit7LWGGz3C"},

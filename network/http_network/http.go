@@ -107,8 +107,8 @@ func (hn *HTTPNetWork) Broadcast(modelID string, msg *network.BroadcastMsg) erro
 	switch msg.MsgType {
 	case model.BroadcastMsgType_send_pbft_msg, model.BroadcastMsgType_send_block_meta,
 		model.BroadcastMsgType_send_tx, model.BroadcastMsgType_request_load_block:
-		go func() {
-			for _, addr := range hn.Addrs {
+		for _, addr := range hn.Addrs {
+			go func(addr string) {
 				request := gorequest.New()
 				logger.Debugf("向%s发起请求", addr)
 				request.Post(addr + "/broadcast")
@@ -120,8 +120,8 @@ func (hn *HTTPNetWork) Broadcast(modelID string, msg *network.BroadcastMsg) erro
 				if err != nil {
 					logger.Debugf("P2P 广播出错, err: %v", err)
 				}
-			}
-		}()
+			}(addr)
+		}
 	default:
 
 	}
@@ -148,11 +148,44 @@ func (hn *HTTPNetWork) BroadcastToPeer(modelID string, msg *network.BroadcastMsg
 			request.Set("peer_address", "http://"+hn.LocalAddress)
 			_, _, err := request.Send(string(requestBody)).End()
 			if err != nil {
-				logger.Debugf("广播到 %s 出错, err: %v", p.Address, err)
+				logger.Debugf("P2P 广播出错, err: %v", err)
 			}
 		}()
 	default:
 
+	}
+	return nil
+}
+
+func (hn *HTTPNetWork) BroadcastExceptPeer(modelID string, msg *network.BroadcastMsg, p *network.Peer) error {
+	requestBody, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	switch msg.MsgType {
+	case model.BroadcastMsgType_send_pbft_msg, model.BroadcastMsgType_send_block_meta,
+		model.BroadcastMsgType_send_tx, model.BroadcastMsgType_request_load_block,
+		model.BroadcastMsgType_send_specific_block:
+		for _, addr := range hn.Addrs {
+			if addr == p.Address {
+				continue
+			}
+			go func(addr string) {
+				request := gorequest.New()
+				logger.Debugf("向%s发起请求", addr)
+				request.Post(addr + "/broadcast")
+				// 必须在Method之后 添加头 这个包坑太多
+				// Method之后 会清除SuperAgent
+				request.Set("peer_id", hn.NodeID)
+				request.Set("peer_address", "http://"+hn.LocalAddress)
+				_, _, err := request.Send(string(requestBody)).End()
+				if err != nil {
+					logger.Debugf("P2P 广播出错, err: %v", err)
+				}
+			}(addr)
+		}
+	default:
 	}
 	return nil
 }

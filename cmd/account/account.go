@@ -73,7 +73,44 @@ func PublicKeyToAddress(pub string) error {
 	return err
 }
 
-func Balance(api string) error {
+func Balance(api string, account string) error {
+	if account != "" {
+		resp, err := http.Get(api + "/account/" + account)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		content, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		respValue := struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+		}{}
+		if err := json.Unmarshal(content, &respValue); err != nil {
+			return err
+		}
+		if respValue.Code == 404 {
+			fmt.Printf("账户: %s 余额: %d\n", account, 0)
+			return nil
+		}
+		if respValue.Code == 0 {
+			respValue := struct {
+				Code    int            `json:"code"`
+				Message string         `json:"message"`
+				Data    *model.Account `json:"data"`
+			}{}
+			if err := json.Unmarshal(content, &respValue); err != nil {
+				return err
+			}
+			b, _ := strconv.ParseUint(respValue.Data.Balance.Amount, 10, 64)
+			fmt.Printf("账户: %s 余额: %d\n", account, b)
+			return nil
+		}
+		return fmt.Errorf(respValue.Message)
+	}
+
 	db, err := sqlx.Open("sqlite3", "account.db")
 	defer db.Close()
 	if err != nil {

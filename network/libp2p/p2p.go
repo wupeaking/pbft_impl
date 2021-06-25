@@ -252,6 +252,19 @@ func (p2p *P2PNetWork) BroadcastToPeer(modelID string, msg *pbftnet.BroadcastMsg
 	return nil
 }
 
+//BroadcastExceptPeer 除了某个节点 向任意节点广播消息
+func (p2p *P2PNetWork) BroadcastExceptPeer(modelID string, msg *pbftnet.BroadcastMsg, p *pbftnet.Peer) error {
+	// 向所以已知节点进行广播
+	logger.Debugf("广播节点数量: %d", len(p2p.books))
+	for id := range p2p.books {
+		if id == p.ID {
+			continue
+		}
+		p2p.BroadcastToPeer(modelID, msg, &pbftnet.Peer{ID: id})
+	}
+	return nil
+}
+
 // 移除某个peer
 func (p2p *P2PNetWork) RemovePeer(p *pbftnet.Peer) error {
 	go func() {

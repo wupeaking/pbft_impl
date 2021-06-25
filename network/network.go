@@ -11,6 +11,8 @@ type SwitcherI interface {
 	Broadcast(modelID string, msg *BroadcastMsg) error
 	// 广播到指定的peer
 	BroadcastToPeer(modelID string, msg *BroadcastMsg, p *Peer) error
+	// 广播 除了指定的peer
+	BroadcastExceptPeer(modelID string, msg *BroadcastMsg, p *Peer) error
 	// 移除某个peer
 	RemovePeer(p *Peer) error
 	RegisterOnReceive(modelID string, callBack OnReceive) error

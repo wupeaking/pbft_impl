@@ -48,9 +48,10 @@ func main() {
 						Usage: "查询账户余额",
 						Flags: []cli.Flag{
 							&cli.StringFlag{Name: "api", Usage: "api地址", DefaultText: "http://localhost:8088", Value: "http://localhost:8088"},
+							&cli.StringFlag{Name: "address", Usage: "指定账户的余额", DefaultText: "http://localhost:8088"},
 						},
 						Action: func(c *cli.Context) error {
-							return account.Balance(c.String("api"))
+							return account.Balance(c.String("api"), c.String("address"))
 						},
 					},
 					{
