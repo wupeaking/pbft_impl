@@ -21,44 +21,86 @@ func New(db *cache.DBCache, cfg *config.Configure) *VirtualMachine {
 }
 
 // 模拟交易
-func (vm *VirtualMachine) Eval(tx *model.Tx) *model.TxReceipt {
+func (vm *VirtualMachine) Eval(tx *model.Tx, snap *Snapshot) (*model.TxReceipt, error) {
 	txr := &model.TxReceipt{}
 	txr.Status = -1
 	txr.TxId = tx.Sign
 	if tx.Sender == nil || tx.Sender.Address == "" ||
 		tx.Sequeue == "" || len(tx.Sign) == 0 || len(tx.PublickKey) == 0 {
-		return txr
+		return txr, fmt.Errorf("交易参数不正确")
 	}
 
 	// 查询当前交易是否已经存在
-	old, err := vm.db.GetTxByID(fmt.Sprintf("%0x", tx.Sign))
+	txID := fmt.Sprintf("%0x", tx.Sign)
+	if snap.GetTxByID(txID) != nil {
+		return txr, fmt.Errorf("交易已经存在")
+	}
+	old, err := vm.db.GetTxByID(txID)
 	if err != nil || old != nil {
-		return txr
+		return txr, fmt.Errorf("交易已经存在 err: %v", err)
 	}
 
 	// 首先交易 签名是否正确
 	accountAddr := model.PublicKeyToAddress(tx.PublickKey)
 	if tx.Sender.Address != accountAddr.Address {
-		return txr
+		return txr, fmt.Errorf("公钥和地址不匹配")
 	}
 	// 查询账户信息
-	account, err := vm.db.GetAccountByID(tx.Sender.Address)
-	if err != nil {
-		return txr
-	}
-	if model.Compare(account.Balance.Amount, tx.Amount.Amount) < 0 {
-		return txr
+	var account *model.Account
+	if a := snap.GetAccountByID(tx.Sender.Address); a != nil {
+		if model.Compare(account.Balance.Amount, tx.Amount.Amount) < 0 {
+			return txr, nil
+		}
+		account = a
+	} else {
+		a, err := vm.db.GetAccountByID(tx.Sender.Address)
+		if err != nil {
+			return txr, err
+		}
+		if a == nil {
+			return txr, fmt.Errorf("账户不存在")
+		}
+		if model.Compare(a.Balance.Amount, tx.Amount.Amount) < 0 {
+			return txr, nil
+		}
+		account = a
 	}
 
 	// 签名
 	ok, err := tx.VerifySignedTx()
 	if err != nil || !ok {
-		return txr
+		return txr, fmt.Errorf("交易签名不一致")
 	}
 
+	// 获取receipt的账户
+	var recv *model.Account
+	if r := snap.GetAccountByID(tx.Recipient.Address); r != nil {
+		recv = r
+	} else {
+		r, err := vm.db.GetAccountByID(tx.Recipient.Address)
+		if err != nil {
+			return txr, err
+		}
+		if r == nil {
+			// 说明账户不存在 需要新建一个账户
+			recv = &model.Account{
+				Id:          tx.Recipient,
+				Balance:     &model.Amount{Amount: "0"},
+				AccountType: int32(model.AccountType_Normal),
+			}
+		} else {
+			recv = r
+		}
+	}
+
+	recv.Balance.AddAmount(tx.Amount)
+	account.Balance.SubAmount(tx.Amount)
 	txr.Status = 0
 	txr.TxId = tx.Sign
-	return txr
+	snap.UpdateAccountByID(account)
+	snap.UpdateAccountByID(recv)
+	snap.UpdateTxByID(tx)
+	return txr, nil
 }
 
 // 执行交易
@@ -75,7 +117,7 @@ func (vm *VirtualMachine) Exec(tx *model.Tx) (*model.TxReceipt, error) {
 	// 查询当前交易是否已经存在
 	old, err := vm.db.GetTxByID(fmt.Sprintf("%0x", tx.Sign))
 	if err != nil || old != nil {
-		return txr, fmt.Errorf("交易已经存在")
+		return txr, fmt.Errorf("交易已经存在 err: %v", err)
 	}
 
 	// 首先交易 签名是否正确
@@ -88,8 +130,11 @@ func (vm *VirtualMachine) Exec(tx *model.Tx) (*model.TxReceipt, error) {
 	if err != nil {
 		return txr, fmt.Errorf("查询账户信息出错 err: %v", err)
 	}
+	if account == nil {
+		return txr, fmt.Errorf("账户不存在")
+	}
 	if model.Compare(account.Balance.Amount, tx.Amount.Amount) < 0 {
-		return txr, fmt.Errorf("账户余额不足")
+		return txr, nil //fmt.Errorf("账户余额不足")
 	}
 
 	// 签名

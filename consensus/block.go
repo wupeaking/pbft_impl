@@ -6,6 +6,7 @@ import (
 	"time"
 
 	cryptogo "github.com/wupeaking/pbft_impl/crypto"
+	"github.com/wupeaking/pbft_impl/cvm"
 	"github.com/wupeaking/pbft_impl/model"
 )
 
@@ -43,9 +44,17 @@ func (pbft *PBFT) packageBlock() (*model.PbftBlock, error) {
 	blk.Tansactions = &model.Txs{Tansactions: txs}
 	// todo:: 需要调用执行txs模块 生成blk.TransactionReceipts
 	blk.TransactionReceipts = &model.TxReceipts{TansactionReceipts: make([]*model.TxReceipt, 0)}
+	snap := cvm.NewSnapshot()
 	for i := range blk.Tansactions.Tansactions {
-		txr := pbft.vm.Eval(blk.Tansactions.Tansactions[i])
-		err := txr.SignedTxReceipt(privKey)
+		txr, err := pbft.vm.Eval(blk.Tansactions.Tansactions[i], snap)
+		if err != nil {
+			pbft.logger.Warnf("当前交易预执行失败, 禁止打包此交易, 交易详情: %#v 错误原因: %s, txID: %s",
+				blk.Tansactions.Tansactions[i], err.Error(), fmt.Sprintf("%0x", blk.Tansactions.Tansactions[i].Sign))
+			// 将此交易从交易池中移除掉
+			pbft.txPool.RemoveTx(blk.Tansactions.Tansactions[i])
+			continue
+		}
+		err = txr.SignedTxReceipt(privKey)
 		if err != nil {
 			return nil, err
 		}
@@ -117,6 +126,7 @@ func (pbft *PBFT) TryApplyBlock(block *model.PbftBlock) error {
 		}
 		txs[string(block.Tansactions.Tansactions[i].Sign)] = struct{}{}
 	}
+	snap := cvm.NewSnapshot()
 	for i, txr := range block.TransactionReceipts.TansactionReceipts {
 		if bytes.Compare(block.Tansactions.Tansactions[i].Sign, txr.TxId) != 0 {
 			return fmt.Errorf("交易收据与交易不能对应")
@@ -124,13 +134,11 @@ func (pbft *PBFT) TryApplyBlock(block *model.PbftBlock) error {
 		if !txr.IsVaildTxR(block.SignerId) {
 			return fmt.Errorf("交易收据信息不合法")
 		}
-
-		// todo:: 模拟执行 有些问题点未解决
 		// 模拟执行 需要涉及到整个区块交易的状态变更 但是又不能更新状态
-		// txrRet := pbft.vm.Eval(block.Tansactions.Tansactions[i])
-		// if txrRet.Status != txr.Status {
-		// 	return fmt.Errorf("预执行交易不一致")
-		// }
+		txrRet, _ := pbft.vm.Eval(block.Tansactions.Tansactions[i], snap)
+		if txrRet.Status != txr.Status {
+			return fmt.Errorf("预执行交易不一致")
+		}
 	}
 
 	if bytes.Compare(block.Tansactions.MerkleRoot(), block.TxRoot) != 0 {
