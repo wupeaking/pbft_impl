@@ -19,7 +19,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.7
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/parnurzeal/gorequest v0.2.16
-	github.com/satori/go.uuid v1.2.0 // indirect
+	github.com/satori/go.uuid v1.2.0 
 	github.com/sirupsen/logrus v1.6.0
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/syndtr/goleveldb v1.0.0

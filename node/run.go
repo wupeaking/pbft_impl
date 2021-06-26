@@ -171,15 +171,16 @@ func (node *PBFTNode) Run() {
 	// 		node.consensusEngine.ApplyBlock(blk)
 	// 	}
 	// }
-	//// todo:: 如果不是验证者 暂时还不能运行
-	if node.ws.CurVerfier == nil {
-		logger.Fatalf("当前节点不是验证者, 暂时不能启动")
-	}
 
 	// 启动P2P
 	go node.switcher.Start()
-	// 启动共识
-	go node.consensusEngine.Daemon()
+	//// 如果是验证者 启动共识模块
+	if node.ws.CurVerfier != nil {
+		// 启动共识
+		go node.consensusEngine.Daemon()
+	} else {
+		logger.Info("当前节点不是验证者节点,只能作为普通节点启动...")
+	}
 	// 启动Blockchain
 	go node.chain.Start()
 	// 启动交易池
@@ -189,8 +190,8 @@ func (node *PBFTNode) Run() {
 	node.apiServer.GET("/", node.apiServer.DefaultHandler)
 	node.chain.StartAPI(node.apiServer.Group("/blockchain"))
 	node.tx.StartAPI(node.apiServer.Group("/tx"))
-	node.apiServer.Group("/consensus")
-	node.apiServer.Group("/ws")
+	node.consensusEngine.StartAPI(node.apiServer.Group("/consensus"))
+	// node.apiServer.Group("/ws")
 	account.NewAccountApi(node.db).StartAPI(node.apiServer.Group("/account"))
 	go node.apiServer.Start()
 
