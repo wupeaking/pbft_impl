@@ -14,16 +14,16 @@ import (
 
 func (t *TxPool) StartAPI(g *echo.Group) {
 	g.GET("/", t.rootHandler)
-	g.GET("/tansaction/status", t.statusHandler)
-	g.PUT("/tansaction/:txid", t.addTxHandler)
-	g.GET("/tansaction/:txid", t.queryTxHandler)
+	g.GET("/transaction/status", t.statusHandler)
+	g.PUT("/transaction/:txid", t.addTxHandler)
+	g.GET("/transaction/:txid", t.queryTxHandler)
 }
 
 func (t *TxPool) rootHandler(ctx echo.Context) error {
 	return ctx.Blob(200, "application/json", []byte(`
-	GET /tx/tansaction/status   当前交易池状态
-	PUT /tx/tansaction/:txid  发起一个新的交易
-	GET /tx/tansaction/:txid  查询交易信息
+	GET /tx/transaction/status   当前交易池状态
+	PUT /tx/transaction/:txid  发起一个新的交易
+	GET /tx/transaction/:txid  查询交易信息
 	`))
 }
 
@@ -63,7 +63,7 @@ func (t *TxPool) addTxHandler(ctx echo.Context) error {
 	if err != nil {
 		return &echo.HTTPError{Code: -1, Internal: err}
 	}
-	fmt.Printf("received tx %#v\n", request)
+	// fmt.Printf("received tx %#v\n", request)
 
 	tx := &model.Tx{
 		Sender:     &model.Address{Address: request.From},
@@ -80,11 +80,15 @@ func (t *TxPool) addTxHandler(ctx echo.Context) error {
 	if !t.AddTx(tx) {
 		return &echo.HTTPError{Code: -1, Internal: fmt.Errorf("交易池已满")}
 	}
-	return api.DataPackage(0, "success", nil, ctx)
+	return api.DataPackage(0, "success", fmt.Sprintf("%0x", tx.Sign), ctx)
 }
 
 func (t *TxPool) queryTxHandler(ctx echo.Context) error {
 	id := ctx.Param("txid")
+	if id == "" {
+		return &echo.HTTPError{Code: -1, Internal: fmt.Errorf("txid不能为空")}
+	}
+	// println("txid", id)
 	tx, err := t.db.GetTxByID(id)
 	if err != nil {
 		return &echo.HTTPError{Code: -1, Internal: err}

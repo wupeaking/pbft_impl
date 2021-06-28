@@ -11,7 +11,7 @@
             "publicKey": "0x84813ee6d837adf74def43d40fc52b999a22d7c6cae66fbd6d4592fd91d67858d90afbab162bf063f46089603cf771669354177d82ee852aeddea6f8682a15c7",
             "privateKey": "0xa665c8da936eba27a48eae8c5f6d862e017c8b47715a11b0267570631af09d59"
         },
-        "logLevel": "debug"
+        "logLevel": "info"
     },
     "transaction":{
         "maxTxNum": 10000,

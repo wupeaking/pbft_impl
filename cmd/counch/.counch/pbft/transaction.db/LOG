@@ -220,3 +220,31 @@
 16:42:13.885714 version@stat F·[] S·0B[] Sc·[]
 16:42:13.895178 db@janitor F·2 G·0
 16:42:13.895201 db@open done T·9.997701ms
+=============== Jun 28, 2021 (CST) ===============
+11:08:07.117420 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+11:08:07.117817 version@stat F·[] S·0B[] Sc·[]
+11:08:07.117826 db@open opening
+11:08:07.117876 journal@recovery F·1
+11:08:07.117988 journal@recovery recovering @48
+11:08:07.118170 version@stat F·[] S·0B[] Sc·[]
+11:08:07.134247 db@janitor F·2 G·0
+11:08:07.134274 db@open done T·16.440372ms
+=============== Jun 28, 2021 (CST) ===============
+11:09:15.986542 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+11:09:16.029805 version@stat F·[] S·0B[] Sc·[]
+11:09:16.029834 db@open opening
+11:09:16.029906 journal@recovery F·1
+11:09:16.033652 journal@recovery recovering @50
+11:09:16.037497 memdb@flush created L0@52 N·1 S·570B "a70..8c8,v1":"a70..8c8,v1"
+11:09:16.070167 version@stat F·[1] S·570B[570B] Sc·[0.25]
+11:09:16.080219 db@janitor F·3 G·0
+11:09:16.080254 db@open done T·50.411571ms
+=============== Jun 28, 2021 (CST) ===============
+11:11:47.025174 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+11:11:47.025286 version@stat F·[1] S·570B[570B] Sc·[0.25]
+11:11:47.025297 db@open opening
+11:11:47.025346 journal@recovery F·1
+11:11:47.026038 journal@recovery recovering @53
+11:11:47.026272 version@stat F·[1] S·570B[570B] Sc·[0.25]
+11:11:47.035604 db@janitor F·3 G·0
+11:11:47.035638 db@open done T·10.333688ms

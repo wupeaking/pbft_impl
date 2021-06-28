@@ -93,12 +93,15 @@ func (vm *VirtualMachine) Eval(tx *model.Tx, snap *Snapshot) (*model.TxReceipt, 
 		}
 	}
 
-	recv.Balance.AddAmount(tx.Amount)
-	account.Balance.SubAmount(tx.Amount)
+	// 复制一份账户 因为整个过程都是指针流转 会导致账户状态发送变化
+	recvCopy := vm.CopyAccount(recv)
+	accountCopy := vm.CopyAccount(account)
+	recvCopy.Balance.AddAmount(tx.Amount)
+	accountCopy.Balance.SubAmount(tx.Amount)
 	txr.Status = 0
 	txr.TxId = tx.Sign
-	snap.UpdateAccountByID(account)
-	snap.UpdateAccountByID(recv)
+	snap.UpdateAccountByID(accountCopy)
+	snap.UpdateAccountByID(recvCopy)
 	snap.UpdateTxByID(tx)
 	return txr, nil
 }
@@ -169,5 +172,29 @@ func (vm *VirtualMachine) Exec(tx *model.Tx) (*model.TxReceipt, error) {
 	if err != nil {
 		return txr, err
 	}
+
+	// 插入交易
+	err = vm.db.Insert(tx)
+	println("insert tx: ", fmt.Sprintf("%0x", tx.Sign))
+	if err != nil {
+		return txr, err
+	}
+	// 插入交易收据
+	err = vm.db.Insert(txr)
+	if err != nil {
+		return txr, err
+	}
 	return txr, nil
+}
+
+func (vm *VirtualMachine) CopyAccount(account *model.Account) *model.Account {
+	code := make([]byte, 0, len(account.Code))
+	copy(code, account.Code)
+	return &model.Account{
+		Id:          account.Id,
+		Code:        code,
+		Balance:     &model.Amount{Amount: account.Balance.Amount},
+		AccountType: account.AccountType,
+		PublickKey:  account.PublickKey,
+	}
 }

@@ -274,3 +274,42 @@
 16:42:13.854233 version@stat F·[3 1] S·125KiB[3KiB 122KiB] Sc·[0.75 0.00]
 16:42:13.869584 db@janitor F·6 G·0
 16:42:13.869624 db@open done T·29.949236ms
+=============== Jun 28, 2021 (CST) ===============
+11:08:07.048718 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+11:08:07.049223 version@stat F·[3 1] S·125KiB[3KiB 122KiB] Sc·[0.75 0.00]
+11:08:07.049233 db@open opening
+11:08:07.049279 journal@recovery F·1
+11:08:07.049550 journal@recovery recovering @71
+11:08:07.054437 memdb@flush created L0@73 N·388 S·62KiB "01b..987,v920":"fef..e1b,v902"
+11:08:07.054611 version@stat F·[4 1] S·187KiB[65KiB 122KiB] Sc·[1.00 0.00]
+11:08:07.065142 db@janitor F·7 G·0
+11:08:07.065191 db@open done T·15.94157ms
+11:08:07.065337 table@compaction L0·4 -> L1·1 S·187KiB Q·1200
+11:08:07.071731 table@build created L1@76 N·1180 S·189KiB "0,v1":"fff..fd5,v186"
+11:08:07.071789 version@stat F·[0 1] S·189KiB[0B 189KiB] Sc·[0.00 0.00]
+11:08:07.078901 table@compaction committed F-4 S+2KiB Ke·0 D·0 T·13.527526ms
+11:08:07.079013 table@remove removed @73
+11:08:07.079047 table@remove removed @70
+11:08:07.079078 table@remove removed @67
+11:08:07.079236 table@remove removed @64
+11:08:07.079273 table@remove removed @63
+=============== Jun 28, 2021 (CST) ===============
+11:09:15.955063 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+11:09:15.955225 version@stat F·[0 1] S·189KiB[0B 189KiB] Sc·[0.00 0.00]
+11:09:15.955232 db@open opening
+11:09:15.955267 journal@recovery F·1
+11:09:15.955493 journal@recovery recovering @74
+11:09:15.959333 memdb@flush created L0@77 N·26 S·3KiB "2ee..d06,v1213":"cef..c67,v1211"
+11:09:15.959567 version@stat F·[1 1] S·193KiB[3KiB 189KiB] Sc·[0.25 0.00]
+11:09:15.969639 db@janitor F·4 G·0
+11:09:15.969688 db@open done T·14.445912ms
+=============== Jun 28, 2021 (CST) ===============
+11:11:46.961889 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+11:11:46.962083 version@stat F·[1 1] S·193KiB[3KiB 189KiB] Sc·[0.25 0.00]
+11:11:46.962094 db@open opening
+11:11:46.962150 journal@recovery F·1
+11:11:46.962446 journal@recovery recovering @78
+11:11:46.966949 memdb@flush created L0@80 N·58 S·8KiB "099..f5e,v1246":"fab..85a,v1252"
+11:11:46.967125 version@stat F·[2 1] S·202KiB[12KiB 189KiB] Sc·[0.50 0.00]
+11:11:46.976980 db@janitor F·5 G·0
+11:11:46.977029 db@open done T·14.92382ms
