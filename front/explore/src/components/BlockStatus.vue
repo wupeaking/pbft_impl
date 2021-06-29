@@ -2,7 +2,7 @@
   <div id="block">
     <a-row :gutter="64">
       <a-col :span="8">
-        <a-statistic-countdown
+        <a-statistic
           title="区块高度"
           :value="deadline"
           style="margin-right: 50px"
@@ -10,10 +10,9 @@
         />
       </a-col>
       <a-col :span="8">
-        <a-statistic-countdown
+        <a-statistic
           title="累计交易数量"
           :value="deadline"
-          format="HH:mm:ss:SSS"
           style="margin-right: 50px"
         />
       </a-col>
@@ -28,12 +27,23 @@
   </div>
 </template>
 <script>
+import axios from 'axios';
 export default {
   name: "blockStatue",
   data() {
     return {
-      deadline: Date.now() + 1000 * 60 * 60 * 24 * 2 + 1000 * 30,
+      deadline: 0,
     };
+  },
+  mounted() {
+    setInterval(() => {
+        console.log("get ----------------");
+        this.deadline++;
+      axios
+        .get("https://api.coindesk.com/v1/bpi/currentprice.json")
+        .then((response) => (this.info = response.data.bpi))
+        .catch((error) => console.log(error));
+    }, 2000);
   },
   methods: {
     onFinish() {
