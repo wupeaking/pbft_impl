@@ -78,6 +78,12 @@ func (pbft *PBFT) CommitBlock(block *model.PbftBlock) error {
 	if err := pbft.ApplyBlock(block); err != nil {
 		return err
 	}
+	// 插入交易记录 方便查询
+	err := pbft.ws.InsertTxRecords(block.Tansactions.Tansactions, block.TransactionReceipts.TansactionReceipts,
+		int64(block.BlockNum))
+	if err != nil {
+		pbft.logger.Warnf("插入交易记录出错 可能导致交易记录查询不可用 err: %v", err)
+	}
 
 	pbft.ws.IncreaseBlockNum()
 	pbft.ws.SetValue(block.BlockNum, pbft.ws.BlockID, block.BlockId, nil)

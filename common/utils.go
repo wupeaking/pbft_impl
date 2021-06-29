@@ -1,6 +1,9 @@
 package common
 
-import "crypto/sha256"
+import (
+	"crypto/sha256"
+	"os"
+)
 
 func Merkel(arrs [][]byte) []byte {
 	if len(arrs) == 0 {
@@ -31,4 +34,12 @@ func Merkel(arrs [][]byte) []byte {
 		newArrs = append(newArrs, Merkel([][]byte{arrs[i]}))
 	}
 	return Merkel(newArrs)
+}
+
+func FileExist(file string) bool {
+	_, err := os.Stat(file) //os.Stat获取文件信息
+	if err != nil {
+		return os.IsExist(err)
+	}
+	return true
 }

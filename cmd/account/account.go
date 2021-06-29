@@ -24,7 +24,7 @@ func GenerateAccount(password string) error {
 		return err
 	}
 
-	db, err := sqlx.Open("sqlite3", "account.db")
+	db, err := sqlx.Open("sqlite3", ".counch/account.db")
 	defer db.Close()
 	if err != nil {
 		return err
@@ -111,7 +111,7 @@ func Balance(api string, account string) error {
 		return fmt.Errorf(respValue.Message)
 	}
 
-	db, err := sqlx.Open("sqlite3", "account.db")
+	db, err := sqlx.Open("sqlite3", ".counch/account.db")
 	defer db.Close()
 	if err != nil {
 		return err
@@ -174,7 +174,7 @@ func Transfer(api, to, password, address string, index int, amount int64) error 
 	if address == "" && index == -1 {
 		return fmt.Errorf("账户地址或者编号必须任选其一")
 	}
-	db, err := sqlx.Open("sqlite3", "account.db")
+	db, err := sqlx.Open("sqlite3", ".counch/account.db")
 	defer db.Close()
 	if err != nil {
 		return err
@@ -222,7 +222,7 @@ func Transfer(api, to, password, address string, index int, amount int64) error 
 		return err
 	}
 
-	url := api + "/tx/tansaction/" + cryptogo.Bytes2Hex(tx.Sign)
+	url := api + "/tx/transaction/" + cryptogo.Bytes2Hex(tx.Sign)
 	request := struct {
 		From      string `json:"from"`
 		To        string `json:"to"`
@@ -260,7 +260,7 @@ func Transfer(api, to, password, address string, index int, amount int64) error 
 }
 
 func List(password string) error {
-	db, err := sqlx.Open("sqlite3", "account.db")
+	db, err := sqlx.Open("sqlite3", ".counch/account.db")
 	defer db.Close()
 	if err != nil {
 		return err
@@ -320,7 +320,7 @@ func Import(private, password string) error {
 	priCrypto := cryptogo.AESEncrypt(priBytes, []byte(password))
 	priCryptoStr := cryptogo.Bytes2Hex(priCrypto)
 
-	db, err := sqlx.Open("sqlite3", "account.db")
+	db, err := sqlx.Open("sqlite3", ".counch/account.db")
 	defer db.Close()
 	if err != nil {
 		return err

@@ -175,7 +175,7 @@ func (vm *VirtualMachine) Exec(tx *model.Tx) (*model.TxReceipt, error) {
 
 	// 插入交易
 	err = vm.db.Insert(tx)
-	println("insert tx: ", fmt.Sprintf("%0x", tx.Sign))
+	// println("insert tx: ", fmt.Sprintf("%0x", tx.Sign))
 	if err != nil {
 		return txr, err
 	}

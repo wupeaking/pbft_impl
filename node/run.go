@@ -38,7 +38,7 @@ func New() *PBFTNode {
 	// 创建缓存数据库
 	db := cache.New("./.counch")
 	// 检查本地是否已经保存数据
-	ws := world_state.New(db)
+	ws := world_state.New(db, ".counch")
 	// 读取创世区块
 	genesis, err := ws.GetGenesis()
 	if err != nil {
@@ -191,7 +191,7 @@ func (node *PBFTNode) Run() {
 	node.chain.StartAPI(node.apiServer.Group("/blockchain"))
 	node.tx.StartAPI(node.apiServer.Group("/tx"))
 	node.consensusEngine.StartAPI(node.apiServer.Group("/consensus"))
-	// node.apiServer.Group("/ws")
+	node.ws.StartAPI(node.apiServer.Group("/ws"))
 	account.NewAccountApi(node.db).StartAPI(node.apiServer.Group("/account"))
 	go node.apiServer.Start()
 
