@@ -1,8 +1,6 @@
 package world_state
 
 import (
-	"encoding/json"
-
 	"github.com/labstack/echo"
 	"github.com/wupeaking/pbft_impl/api"
 )
@@ -35,9 +33,8 @@ func (ws *WroldState) statusHandler(ctx echo.Context) error {
 	resp.BlockNum = ws.BlockNum
 	resp.LastView = ws.View
 	resp.VerfierNum = len(ws.Verifiers)
-	respBody, _ := json.Marshal(resp)
 
-	return ctx.Blob(200, "application/json", respBody)
+	return api.DataPackage(0, "success", resp, ctx)
 }
 
 func (ws *WroldState) lastTxsHandler(ctx echo.Context) error {

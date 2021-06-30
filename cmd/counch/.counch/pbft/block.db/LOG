@@ -370,3 +370,42 @@
 18:13:14.319553 version@stat F·[1 1] S·215KiB[1KiB 214KiB] Sc·[0.25 0.00]
 18:13:14.337802 db@janitor F·4 G·0
 18:13:14.337903 db@open done T·22.27942ms
+=============== Jun 30, 2021 (CST) ===============
+10:23:27.700472 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+10:23:27.708231 version@stat F·[1 1] S·215KiB[1KiB 214KiB] Sc·[0.25 0.00]
+10:23:27.708244 db@open opening
+10:23:27.708299 journal@recovery F·1
+10:23:27.708677 journal@recovery recovering @95
+10:23:27.712273 memdb@flush created L0@97 N·16 S·2KiB "3bb..fbf,v1374":"e4a..5e6,v1370"
+10:23:27.712412 version@stat F·[2 1] S·218KiB[3KiB 214KiB] Sc·[0.50 0.00]
+10:23:27.722230 db@janitor F·5 G·0
+10:23:27.722268 db@open done T·14.014409ms
+=============== Jun 30, 2021 (CST) ===============
+10:24:34.722950 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+10:24:34.723123 version@stat F·[2 1] S·218KiB[3KiB 214KiB] Sc·[0.50 0.00]
+10:24:34.723133 db@open opening
+10:24:34.723187 journal@recovery F·1
+10:24:34.723381 journal@recovery recovering @98
+10:24:34.734318 memdb@flush created L0@100 N·22 S·2KiB "02b..16a,v1387":"f5e..21c,v1383"
+10:24:34.734530 version@stat F·[3 1] S·220KiB[6KiB 214KiB] Sc·[0.75 0.00]
+10:24:34.745793 db@janitor F·6 G·0
+10:24:34.745837 db@open done T·22.687589ms
+=============== Jun 30, 2021 (CST) ===============
+10:31:08.947247 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+10:31:08.950023 version@stat F·[3 1] S·220KiB[6KiB 214KiB] Sc·[0.75 0.00]
+10:31:08.950032 db@open opening
+10:31:08.950071 journal@recovery F·1
+10:31:08.950262 journal@recovery recovering @101
+10:31:08.954390 memdb@flush created L0@103 N·136 S·20KiB "01f..1a3,v1464":"fd5..064,v1432"
+10:31:08.954597 version@stat F·[4 1] S·241KiB[26KiB 214KiB] Sc·[1.00 0.00]
+10:31:08.964526 db@janitor F·7 G·0
+10:31:08.964559 db@open done T·14.51892ms
+10:31:08.964649 table@compaction L0·4 -> L1·1 S·241KiB Q·1536
+10:31:08.971947 table@build created L1@106 N·1508 S·244KiB "0,v1":"fff..fd5,v186"
+10:31:08.972000 version@stat F·[0 1] S·244KiB[0B 244KiB] Sc·[0.00 0.00]
+10:31:08.978205 table@compaction committed F-4 S+2KiB Ke·0 D·0 T·13.522091ms
+10:31:08.978312 table@remove removed @103
+10:31:08.978345 table@remove removed @100
+10:31:08.978375 table@remove removed @97
+10:31:08.978526 table@remove removed @92
+10:31:08.978687 table@remove removed @91

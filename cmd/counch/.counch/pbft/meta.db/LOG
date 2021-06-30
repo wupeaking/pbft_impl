@@ -370,3 +370,42 @@
 18:13:14.339247 version@stat F·[1 1] S·518B[276B 242B] Sc·[0.25 0.00]
 18:13:14.368773 db@janitor F·4 G·0
 18:13:14.368808 db@open done T·30.618918ms
+=============== Jun 30, 2021 (CST) ===============
+10:23:27.722314 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+10:23:27.722495 version@stat F·[1 1] S·518B[276B 242B] Sc·[0.25 0.00]
+10:23:27.722504 db@open opening
+10:23:27.722536 journal@recovery F·1
+10:23:27.722770 journal@recovery recovering @95
+10:23:27.726097 memdb@flush created L0@97 N·8 S·351B "blo..eta,v700":"blo..eta,v693"
+10:23:27.736578 version@stat F·[2 1] S·869B[627B 242B] Sc·[0.50 0.00]
+10:23:27.745986 db@janitor F·5 G·0
+10:23:27.746005 db@open done T·23.496385ms
+=============== Jun 30, 2021 (CST) ===============
+10:24:34.745889 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+10:24:34.746012 version@stat F·[2 1] S·869B[627B 242B] Sc·[0.50 0.00]
+10:24:34.746020 db@open opening
+10:24:34.746057 journal@recovery F·1
+10:24:34.886787 journal@recovery recovering @98
+10:24:34.892711 memdb@flush created L0@100 N·11 S·396B "blo..eta,v712":"blo..eta,v702"
+10:24:34.892874 version@stat F·[3 1] S·1KiB[1023B 242B] Sc·[0.75 0.00]
+10:24:34.902592 db@janitor F·6 G·0
+10:24:34.902613 db@open done T·156.587706ms
+=============== Jun 30, 2021 (CST) ===============
+10:31:08.964603 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+10:31:08.964803 version@stat F·[3 1] S·1KiB[1023B 242B] Sc·[0.75 0.00]
+10:31:08.964813 db@open opening
+10:31:08.964865 journal@recovery F·1
+10:31:08.965342 journal@recovery recovering @101
+10:31:08.968881 memdb@flush created L0@103 N·68 S·1KiB "blo..eta,v781":"blo..eta,v714"
+10:31:09.015992 version@stat F·[4 1] S·2KiB[2KiB 242B] Sc·[1.00 0.00]
+10:31:09.025878 db@janitor F·7 G·0
+10:31:09.025902 db@open done T·61.082787ms
+10:31:09.025953 table@compaction L0·4 -> L1·1 S·2KiB Q·782
+10:31:09.029732 table@build created L1@106 N·1 S·242B "blo..eta,v781":"blo..eta,v781"
+10:31:09.029791 version@stat F·[0 1] S·242B[0B 242B] Sc·[0.00 0.00]
+10:31:09.035959 table@compaction committed F-4 S-2KiB Ke·0 D·90 T·9.947878ms
+10:31:09.036040 table@remove removed @103
+10:31:09.036136 table@remove removed @100
+10:31:09.036180 table@remove removed @97
+10:31:09.036206 table@remove removed @92
+10:31:09.036228 table@remove removed @91

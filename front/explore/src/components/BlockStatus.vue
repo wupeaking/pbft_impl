@@ -1,22 +1,29 @@
 <template>
   <div id="block">
     <a-row :gutter="64">
-      <a-col :span="8">
+      <a-col :span="6">
         <a-statistic
           title="区块高度"
-          :value="deadline"
+          :value="blockNumber"
           style="margin-right: 50px"
           @finish="onFinish"
         />
       </a-col>
-      <a-col :span="8">
+      <a-col :span="6">
         <a-statistic
           title="累计交易数量"
-          :value="deadline"
+          :value="txNumber"
           style="margin-right: 50px"
         />
       </a-col>
-      <a-col :span="8">
+      <a-col :span="6">
+        <a-statistic
+          title="验证节点"
+          :value="verfiers"
+          style="margin-right: 50px"
+        />
+      </a-col>
+      <a-col :span="6">
         <a-statistic-countdown
           title="成功运行天数"
           :value="deadline"
@@ -27,21 +34,34 @@
   </div>
 </template>
 <script>
-import axios from 'axios';
+import axios from "axios";
 export default {
   name: "blockStatue",
   data() {
     return {
-      deadline: 0,
+      deadline: 100,
+      blockNumber: 0,
+      verfiers: 0,
+      txNumber: 0,
     };
   },
   mounted() {
     setInterval(() => {
-        console.log("get ----------------");
-        this.deadline++;
+      this.deadline++;
+      var that = this;
       axios
-        .get("https://api.coindesk.com/v1/bpi/currentprice.json")
-        .then((response) => (this.info = response.data.bpi))
+        .get("/ws/status")
+        .then(function(response) {
+          // console.log(response)
+          if(response.data.code !== 0) {
+            console.log(response.msg)
+          }else{
+            // console.log(response)
+            that.blockNumber = response.data.data.block_num;
+            that.txNumber = response.data.data.tx_num;
+            that.verfiers = response.data.data.verfier_num;
+          }
+        })
         .catch((error) => console.log(error));
     }, 2000);
   },

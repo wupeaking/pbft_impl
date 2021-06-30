@@ -1,16 +1,17 @@
 <template>
   <div id="lastBlock">
-    <a-table :columns="columns" :data-source="data">
-    </a-table>
+    <a-table :columns="columns" :data-source="data"> </a-table>
   </div>
 </template>
 <script>
+
+import axios from "axios";
 const columns = [
   {
     title: "区块编号",
-    dataIndex: "name",
-    key: "name",
-    scopedSlots: { customRender: "name" },
+    dataIndex: "number",
+    key: "number",
+    scopedSlots: { customRender: "number" },
   },
   {
     title: "区块hash",
@@ -23,39 +24,24 @@ const columns = [
     dataIndex: "tx_num",
     key: "tx_num",
     ellipsis: true,
-  }
+  },
 ];
 
 const data = [
   {
-    name: "John Brown",
+    number: 1,
     tx_num: 32,
-    hash: "New York No. 1 Lake Park, New York No. 1 Lake Park",
+    hash: "f37ced5bc037ec2f51be02bda14b54975582380d22e9a29d18566d38e56d8b47",
   },
   {
-    name: "Jim Green",
+    number: 2,
     tx_num: 42,
-    hash: "London No. 2 Lake Park, London No. 2 Lake Park",
+    hash: "7404e6f3b311dbde88e9fd3ff38e9f4d61a725f5bcdeb996d584f83cced1da2e",
   },
   {
-    name: "Joe Black",
+    number: 3,
     tx_num: 32,
-    hash: "Sidney No. 1 Lake Park, Sidney No. 1 Lake Park",
-  },
-    {
-    name: "John Brown",
-    tx_num: 32,
-    hash: "New York No. 1 Lake Park, New York No. 1 Lake Park",
-  },
-  {
-    name: "Jim Green",
-    tx_num: 42,
-    hash: "London No. 2 Lake Park, London No. 2 Lake Park",
-  },
-  {
-    name: "Joe Black",
-    tx_num: 32,
-    hash: "Sidney No. 1 Lake Park, Sidney No. 1 Lake Park",
+    hash: "8bdd124115c7d7ecc069d8153e93eeb6708310c9ca10322052884c7d36364175",
   },
 ];
 
@@ -67,11 +53,41 @@ export default {
       columns,
     };
   },
+
+  mounted() {
+    setInterval(() => {
+      this.deadline++;
+      that = this;
+      var that = this;
+      axios
+        .get("/ws/last_blocks")
+        .then(function (response) {
+          if (response.data.code !== 0) {
+            console.log(response.msg);
+          } else {
+            var data = response.data;
+            if (data.data.length <= 0) {
+              return;
+            }
+            that.data = [];
+            for (var d in data.data) {
+              // console.log(d)
+              that.data.push({
+                number: data.data[d].block_num,
+                tx_num: data.data[d].tx_num,
+                hash: data.data[d].id,
+              });
+            }
+          }
+        })
+        .catch((error) => console.log(error));
+    }, 2000);
+  },
 };
 </script>
 
 <style scoped>
-#lastBlock .a-table{
-    margin-left: 10px;
+#lastBlock .a-table {
+  margin-left: 10px;
 }
 </style>
