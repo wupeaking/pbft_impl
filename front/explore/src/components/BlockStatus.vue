@@ -1,5 +1,5 @@
 <template>
-  <div id="block">
+  <div id="block" style="margin-top:10px">
     <a-row :gutter="64">
       <a-col :span="6">
         <a-statistic
@@ -24,10 +24,9 @@
         />
       </a-col>
       <a-col :span="6">
-        <a-statistic-countdown
-          title="成功运行天数"
-          :value="deadline"
-          format="D 天 H 时 m 分 s 秒"
+        <a-statistic
+          title="视图编号"
+          :value="view"
         />
       </a-col>
     </a-row>
@@ -39,7 +38,7 @@ export default {
   name: "blockStatue",
   data() {
     return {
-      deadline: 100,
+      view: 0,
       blockNumber: 0,
       verfiers: 0,
       txNumber: 0,
@@ -50,7 +49,7 @@ export default {
       this.deadline++;
       var that = this;
       axios
-        .get("/ws/status")
+        .get("/api/ws/status")
         .then(function(response) {
           // console.log(response)
           if(response.data.code !== 0) {
@@ -60,6 +59,7 @@ export default {
             that.blockNumber = response.data.data.block_num;
             that.txNumber = response.data.data.tx_num;
             that.verfiers = response.data.data.verfier_num;
+            that.view = response.data.data.last_view;
           }
         })
         .catch((error) => console.log(error));

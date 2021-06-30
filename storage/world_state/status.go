@@ -138,17 +138,21 @@ func (ws *WroldState) InsertTxRecords(txs []*model.Tx, txrs []*model.TxReceipt, 
 		return nil
 	}
 
-	holder := make([]string, 0, len(txs)*7)
+	holder := make([]string, 0, len(txs))
 	values := make([]interface{}, 0, len(txs)*7)
 	for i := range txs {
-		holder = append(holder, fmt.Sprintf("$%d", i*7+1), fmt.Sprintf("$%d", i*7+2),
+		h := []string{
+			fmt.Sprintf("$%d", i*7+1), fmt.Sprintf("$%d", i*7+2),
 			fmt.Sprintf("$%d", i*7+3), fmt.Sprintf("$%d", i*7+4),
-			fmt.Sprintf("$%d", i*7+5), fmt.Sprintf("$%d", i*7+6), fmt.Sprintf("$%d", i*7+7))
+			fmt.Sprintf("$%d", i*7+5), fmt.Sprintf("$%d", i*7+6),
+			fmt.Sprintf("$%d", i*7+7),
+		}
+		holder = append(holder, fmt.Sprintf("(%s)", strings.Join(h, ",")))
 		values = append(values, fmt.Sprintf("%0x", txs[i].Sign), txs[i].Sender.Address,
 			txs[i].Recipient.Address, txs[i].Amount.Amount,
 			fmt.Sprintf("%0x", txrs[i].Sign), txrs[i].Status, blockNum)
 	}
-	smt := fmt.Sprintf(`insert into records(tx_id, sender, reciept, amount, tx_reciept, status, block_num) values (%s)`,
+	smt := fmt.Sprintf(`insert into records(tx_id, sender, reciept, amount, tx_reciept, status, block_num) values %s`,
 		strings.Join(holder, ", "))
 	_, err := ws.txRecordDB.Exec(smt, values...)
 	return err

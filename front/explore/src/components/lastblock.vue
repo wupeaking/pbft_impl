@@ -1,5 +1,6 @@
 <template>
   <div id="lastBlock">
+     <a-divider style="font-size:1px">最近区块</a-divider>
     <a-table :columns="columns" :data-source="data"> </a-table>
   </div>
 </template>
@@ -17,7 +18,7 @@ const columns = [
     title: "区块hash",
     dataIndex: "hash",
     key: "hash",
-    // width: 80,
+    ellipsis: true,
   },
   {
     title: "交易数量",
@@ -60,7 +61,7 @@ export default {
       that = this;
       var that = this;
       axios
-        .get("/ws/last_blocks")
+        .get("/api/ws/last_blocks")
         .then(function (response) {
           if (response.data.code !== 0) {
             console.log(response.msg);

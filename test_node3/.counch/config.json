@@ -27,8 +27,8 @@
         "netMode": "p2p",
         "localAddr": "127.0.0.1:39876",
 	    "nodeAddrs": [
-            {"address": "http://127.0.0.1:19876", "peerID": "QmTGDM1mXFpsZSCxX6vpriHQoWmzC1BGvduFit7LWGGz3C"},
-            {"address": "http://127.0.0.1:29876", "peerID": "QmahEELfqnuyAPskC8dzyNCHd3n5QBRnTjWg2mrTCuWvqE"}
+            {"address": "/ip4/127.0.0.1/tcp/19876/p2p/QmTGDM1mXFpsZSCxX6vpriHQoWmzC1BGvduFit7LWGGz3C", "peerID": "QmTGDM1mXFpsZSCxX6vpriHQoWmzC1BGvduFit7LWGGz3C"},
+            {"address": "/ip4/127.0.0.1/tcp/29876/p2p/QmahEELfqnuyAPskC8dzyNCHd3n5QBRnTjWg2mrTCuWvqE", "peerID": "QmahEELfqnuyAPskC8dzyNCHd3n5QBRnTjWg2mrTCuWvqE"}
         ],
         "publicKey": "0x5ca153355f800c66150130b8becb951856e408555829eb07de89d3ed35fdd85872923fd9c51444ace5df3d6ce331da676a5e90596e7952f3f4a05c623bc00d77",
         "privateKey": "0xad35cf8d241b828459009df3f6d98caec239b6603e94808b6ce4810b04b49901",
@@ -38,6 +38,9 @@
     "db":{
         "storageEngine": "leveldb",
         "logLevel": "Debug"
+    },
+    "web":{
+        "port": 8090
     },
     "account": [
         {

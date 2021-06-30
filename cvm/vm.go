@@ -48,7 +48,7 @@ func (vm *VirtualMachine) Eval(tx *model.Tx, snap *Snapshot) (*model.TxReceipt, 
 	// 查询账户信息
 	var account *model.Account
 	if a := snap.GetAccountByID(tx.Sender.Address); a != nil {
-		if model.Compare(account.Balance.Amount, tx.Amount.Amount) < 0 {
+		if model.Compare(a.Balance.Amount, tx.Amount.Amount) < 0 {
 			return txr, nil
 		}
 		account = a
@@ -191,7 +191,7 @@ func (vm *VirtualMachine) CopyAccount(account *model.Account) *model.Account {
 	code := make([]byte, 0, len(account.Code))
 	copy(code, account.Code)
 	return &model.Account{
-		Id:          account.Id,
+		Id:          &model.Address{Address: account.Id.Address},
 		Code:        code,
 		Balance:     &model.Amount{Amount: account.Balance.Amount},
 		AccountType: account.AccountType,

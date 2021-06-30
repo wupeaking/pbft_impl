@@ -160,6 +160,9 @@ func (txpool *TxPool) VerifyTx(tx *model.Tx) error {
 	if err != nil {
 		return err
 	}
+	if account == nil {
+		return fmt.Errorf("账户不存在")
+	}
 	if model.Compare(account.Balance.Amount, tx.Amount.Amount) < 0 {
 		return fmt.Errorf("余额不足")
 	}

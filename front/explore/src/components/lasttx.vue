@@ -1,5 +1,6 @@
 <template>
   <div>
+    <a-divider style="font-size:1px">最近交易</a-divider>
     <a-table :columns="columns" :data-source="data"> </a-table>
   </div>
 </template>
@@ -63,7 +64,7 @@ export default {
       that = this;
       var that = this;
       axios
-        .get("/ws/last_txs")
+        .get("/api/ws/last_txs")
         .then(function (response) {
           if (response.data.code !== 0) {
             console.log(response.msg);

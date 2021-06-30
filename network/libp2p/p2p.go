@@ -49,8 +49,9 @@ type P2PNetWork struct {
 	kademliaDHT    *dht.IpfsDHT
 	routeDiscovery *discovery.RoutingDiscovery
 	sync.RWMutex
-	books  map[string]*P2PStream
-	recvCB map[string]pbftnet.OnReceive
+	books        map[string]*P2PStream
+	recvCB       map[string]pbftnet.OnReceive
+	specifyNodes []string
 }
 
 type P2PStream struct {
@@ -117,6 +118,10 @@ func New(cfg *config.Configure) (pbftnet.SwitcherI, error) {
 		}
 		p2p.boostrapPeers = append(p2p.boostrapPeers, mAddr)
 	}
+	p2p.specifyNodes = []string{}
+	for i := range cfg.NodeAddrs {
+		p2p.specifyNodes = append(p2p.specifyNodes, cfg.NodeAddrs[i].Address)
+	}
 
 	dhtOps := []dht.Option{}
 	if p2p.bootstarp {
@@ -169,6 +174,7 @@ func (p2p *P2PNetWork) Start() error {
 
 	discovery.Advertise(ctx, p2p.routeDiscovery, p2p.rendezvous)
 	go p2p.NodeDiscovery()
+	go p2p.SpecialNodeConnect()
 	return nil
 }
 
@@ -186,6 +192,7 @@ func (p2p *P2PNetWork) NodeDiscovery() {
 			logger.Debugf("此peer已经连接 %s\n", peer.ID.String())
 			continue
 		}
+		logger.Debugf("发现新的节点, peer: %v", peer)
 		stream, err := p2p.Host.NewStream(context.Background(), peer.ID, protocol.ID(p2p.protocol))
 		if err != nil {
 			logger.Infof("p2p Connection failed: %v\n", err)
@@ -204,6 +211,53 @@ func (p2p *P2PNetWork) NodeDiscovery() {
 			go p2p.dataStreamRecv(p2pStaeam)
 			go p2p.dataStreamSend(p2pStaeam)
 		}
+	}
+}
+
+func (p2p *P2PNetWork) SpecialNodeConnect() {
+	for {
+		for i := range p2p.specifyNodes {
+			mAddr, err := ma.NewMultiaddr(p2p.specifyNodes[i])
+			if err != nil {
+				logger.Warnf("解析指定节点地址出错 err: %v, addr: %v\n", err, p2p.specifyNodes[i])
+				continue
+			}
+			peer, err := peer.AddrInfoFromP2pAddr(mAddr)
+			if err != nil {
+				logger.Warnf("指定节点地址转换出错 err: %v, addr: %v\n", err, p2p.specifyNodes[i])
+				continue
+			}
+
+			p2p.RLock()
+			_, ok := p2p.books[peer.ID.String()]
+			p2p.RUnlock()
+			if ok {
+				logger.Debugf("节点%s已经连接: %v\n", peer.ID, peer)
+				continue
+			}
+
+			stream, err := p2p.Host.NewStream(context.Background(), peer.ID, protocol.ID(p2p.protocol))
+			if err != nil {
+				logger.Infof("p2p Connection failed: %v\n", err)
+				continue
+			} else {
+				p2pStaeam := &P2PStream{
+					peerID:           peer.ID.String(),
+					stream:           stream,
+					broadcastMsgChan: make(chan *pbftnet.BroadcastMsg, 0),
+					closeReadStrem:   make(chan struct{}, 1),
+					closeWriteStrem:  make(chan struct{}, 1),
+				}
+				p2p.Lock()
+				p2p.books[peer.ID.String()] = p2pStaeam
+				p2p.Unlock()
+				logger.Debugf("成功连接到节点: %v\n", peer)
+				go p2p.dataStreamRecv(p2pStaeam)
+				go p2p.dataStreamSend(p2pStaeam)
+			}
+
+		}
+		time.Sleep(5 * time.Second)
 	}
 }
 
