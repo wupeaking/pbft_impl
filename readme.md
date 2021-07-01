@@ -128,3 +128,7 @@ go build -v -o counch.x cmd/counch/main.go
 > ./counch.x
 
 ```
+
+
+### 目前已经部署了3个节点的测试链
+区块链浏览器地址为: http://blockchain.wupengxin.cn
