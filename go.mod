@@ -19,12 +19,12 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.7
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/parnurzeal/gorequest v0.2.16
-	github.com/satori/go.uuid v1.2.0 
+	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.6.0
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli/v2 v2.3.0
-	golang.org/x/net v0.0.0-20191002035440-2ec189313ef0 // indirect
+	golang.org/x/net v0.7.0 // indirect
 	google.golang.org/grpc v1.24.0 // indirect
 	google.golang.org/protobuf v1.26.0
 	moul.io/http2curl v1.0.0 // indirect
